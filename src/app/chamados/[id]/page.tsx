@@ -1,4 +1,4 @@
-import { ArrowLeft, CalendarDays, MapPin, Phone, Wrench } from "lucide-react";
+import { ArrowLeft, CalendarDays, FileText, MapPin, Phone, Wrench } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -74,6 +74,10 @@ export default async function DetalheChamado({ params }: { params: Promise<{ id:
         clienteInicial={assinaturaCliente}
         tecnicoInicial={assinaturaTecnico}
       />
+      <section className="detail-card">
+        <div className="section-heading"><span>05</span><div><h2>RAT</h2><p>Prepare, revise e gere a ordem de serviço em PDF.</p></div></div>
+        <Link className="primary-button" href={`/chamados/${chamado.id}/rat`}><FileText size={17} />Preparar RAT</Link>
+      </section>
       <section className="danger-zone">
         <ExcluirChamado id={chamado.id} numero={numero} />
       </section>
