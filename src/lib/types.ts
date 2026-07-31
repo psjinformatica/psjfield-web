@@ -44,6 +44,25 @@ export type AtendimentoInput = {
   hora_termino: string;
   descricao_servico: string;
   observacoes_atendimento: string;
+  confirmar_alteracao_hora_inicio: boolean;
+};
+
+export type AtendimentoAtualizado = {
+  status: string;
+  hora_inicio: string;
+};
+
+export type StatusFinalizacao = "Concluído" | "Improdutivo" | "Cancelado";
+
+export type FinalizacaoInput = {
+  status: StatusFinalizacao;
+  motivo: string;
+};
+
+export type ChamadoFinalizado = {
+  status: StatusFinalizacao;
+  hora_termino: string;
+  gera_recebimento: boolean;
 };
 
 export type ChamadoImportacao = Omit<

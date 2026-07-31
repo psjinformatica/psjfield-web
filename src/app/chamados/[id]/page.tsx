@@ -9,6 +9,7 @@ import { MarcarChamadoAcessado } from "@/components/marcar-chamado-acessado";
 import { formatarCidade, formatarData, formatarMoeda } from "@/lib/format";
 import { chamadosService } from "@/lib/server-service";
 import { assinaturasService } from "@/lib/server-signatures";
+import { statusEncerraAtendimento } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
 
@@ -27,8 +28,9 @@ export default async function DetalheChamado({ params }: { params: Promise<{ id:
     assinaturasService.buscarTecnico(),
   ]);
   const numero = chamado.numero_chamado || `Chamado ${chamado.id}`;
+  const encerrado = statusEncerraAtendimento(chamado.status);
   return (
-    <main className="page-shell detail-page">
+    <main className={`page-shell detail-page${encerrado ? " detail-page-closed" : ""}`}>
       <MarcarChamadoAcessado id={chamado.id} />
       <Link className="back-link" href="/"><ArrowLeft size={18} /> Voltar aos chamados</Link>
       <header className="detail-header">

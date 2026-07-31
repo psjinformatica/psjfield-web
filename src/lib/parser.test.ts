@@ -29,6 +29,7 @@ describe("interpretarEml", () => {
     expect(previa.chamado.estado).toBe("PR");
     expect(previa.chamado.valor_base).toBe("100");
     expect(previa.chamado.hash_email).toHaveLength(64);
+    expect(previa.chamado.status).toBe("Agendado");
   });
 
   it("não classifica a intermediadora como cliente", async () => {
@@ -44,5 +45,6 @@ describe("interpretarEml", () => {
     expect(previa.reconhecidoGrupoEasy).toBe(false);
     expect(previa.chamado.cliente).toBe("");
     expect(previa.chamado.corpo_email).toContain("CLIENTE");
+    expect(previa.chamado.status).toBe("Agendado");
   });
 });

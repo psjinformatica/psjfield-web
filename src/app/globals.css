@@ -83,9 +83,10 @@ select:focus, input:focus, textarea:focus { border-color: var(--brand-2); box-sh
 .activity { border-top: 1px solid var(--line); color: var(--muted); display: -webkit-box; font-size: .82rem; line-height: 1.45; margin: 17px 0 0; overflow: hidden; padding-top: 14px; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .price { color: var(--brand); display: block; font-size: .9rem; margin-top: 10px; text-align: right; }
 .status { background: #e6ecea; border-radius: 999px; color: #46534f; display: inline-block; font-size: .7rem; font-weight: 800; letter-spacing: .04em; padding: 6px 9px; text-transform: uppercase; }
-.status-agendado { background: #fff1c7; color: #7a5500; }.status-recebido { background: #dcecff; color: #155296; }
+.status-agendado { background: #fff1c7; color: #7a5500; }
 .status-concluído { background: #d9f3e7; color: #12613f; }.status-cancelado { background: #fee4e2; color: #9c241b; }
 .status-em-atendimento { background: #e9e2ff; color: #5b35a5; }
+.status-improdutivo { background: #f4e2fb; color: #71358c; }
 .status-aguardando-pagamento { background: #ffead6; color: #8a4700; }
 .status-pago { background: #d9f3e7; color: #12613f; }
 .new-badge { background: var(--brand); border-radius: 999px; color: white; font-size: .62rem; font-weight: 850; letter-spacing: .08em; padding: 6px 8px; }
@@ -115,6 +116,10 @@ select:focus, input:focus, textarea:focus { border-color: var(--brand-2); box-sh
 .primary-button { background: var(--brand); color: white; }.primary-button:hover { background: var(--brand-2); }.primary-button:disabled { cursor: not-allowed; opacity: .5; }
 .secondary-button { background: #edf1ef; color: var(--ink); }.danger-button { background: var(--danger); color: white; }
 .feedback { border-radius: 10px; font-size: .85rem; margin: 12px 0; padding: 11px 13px; }.feedback.error { background: #feeceb; color: #94251d; }.feedback.success { background: #e2f4eb; color: #14603e; }
+.detail-page-closed .detail-header { border-left: 4px solid var(--muted); padding-left: 16px; }
+.closed-notice { background: #f3f5f4; border: 1px solid var(--line); border-radius: 10px; color: #46534f; font-size: .85rem; margin: 0 0 18px; padding: 12px 14px; }
+.finish-panel { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 22px; }
+.finish-panel h3 { font-size: 1rem; margin: 0 0 4px; }.finish-panel > p { color: var(--muted); font-size: .8rem; margin: 0 0 16px; }
 .danger-zone { border-top: 1px solid var(--line); margin-top: 28px; padding: 25px 0; }.danger-link { align-items: center; background: none; border: 0; color: var(--danger); cursor: pointer; display: flex; gap: 7px; }
 .delete-confirm { background: #fff4f3; border: 1px solid #f5cac5; border-radius: 14px; padding: 18px; }.delete-confirm p { margin: 0 0 5px; }.delete-confirm .muted { color: var(--muted); font-size: .8rem; }.delete-confirm > div { display: flex; gap: 8px; margin-top: 15px; }.delete-confirm form { display: inline; }
 

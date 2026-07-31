@@ -177,7 +177,7 @@ export async function interpretarEml(
     valor_base: null,
     horas_incluidas: null,
     valor_hora_adicional: null,
-    status: "Recebido",
+    status: "Agendado",
     observacoes: "",
     caminho_email: "",
     hash_email: hash,
@@ -222,7 +222,7 @@ export async function interpretarEml(
       horas_incluidas: numeroDecimal(dados.horas_incluidas),
       valor_hora_adicional: numeroDecimal(dados.valor_hora_adicional),
       observacoes: dados.observacoes || "",
-      status: data || hora ? "Agendado" : "Recebido",
+      status: "Agendado",
     },
   };
 }

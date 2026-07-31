@@ -14,8 +14,26 @@ export const atendimentoSchema = z.object({
   hora_termino: horario,
   descricao_servico: z.string().trim().max(10_000),
   observacoes_atendimento: z.string().trim().max(10_000),
+  confirmar_alteracao_hora_inicio: z.boolean().default(false),
+});
+
+export const finalizacaoSchema = z.object({
+  status: z.enum(["Concluído", "Improdutivo", "Cancelado"]),
+  motivo: z.string().trim().max(10_000).default(""),
+}).superRefine((dados, contexto) => {
+  if ((dados.status === "Improdutivo" || dados.status === "Cancelado") && !dados.motivo) {
+    contexto.addIssue({
+      code: "custom",
+      path: ["motivo"],
+      message: `Informe o motivo do status ${dados.status}.`,
+    });
+  }
 });
 
 export function validarAtendimento(input: unknown) {
   return atendimentoSchema.parse(input);
+}
+
+export function validarFinalizacao(input: unknown) {
+  return finalizacaoSchema.parse(input);
 }

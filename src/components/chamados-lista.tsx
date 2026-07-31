@@ -13,8 +13,9 @@ import {
 } from "@/lib/chamados-acessados";
 import { formatarCidade, formatarDataRelativa, formatarMoeda } from "@/lib/format";
 import type { ChamadoResumo } from "@/lib/types";
+import { STATUS_OPERACIONAIS } from "@/lib/status";
 
-const statusDisponiveis = ["Todos", "Agendado", "Recebido", "Concluído", "Cancelado"];
+const statusDisponiveis = ["Todos", ...STATUS_OPERACIONAIS];
 
 export function ChamadosLista({ chamados }: { chamados: ChamadoResumo[] }) {
   const [busca, setBusca] = useState("");

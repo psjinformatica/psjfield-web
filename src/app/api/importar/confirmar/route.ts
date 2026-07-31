@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     if (revisado.hora_agendada && !/^([01]\d|2[0-3]):[0-5]\d$/.test(revisado.hora_agendada)) {
       throw new Error("Hora agendada inválida.");
     }
-    revisado.status = revisado.data_agendada || revisado.hora_agendada ? "Agendado" : "Recebido";
+    revisado.status = "Agendado";
     revisado.atualizado_em = new Date().toISOString();
     const id = await chamadosService.importar(revisado, arquivo.name);
     return NextResponse.json({ id });

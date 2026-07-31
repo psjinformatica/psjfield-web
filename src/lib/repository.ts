@@ -3,11 +3,15 @@ import "server-only";
 import { getSql } from "@/lib/db";
 import type {
   AtendimentoInput,
+  AtendimentoAtualizado,
   Chamado,
   ChamadoDuplicado,
   ChamadoImportacao,
   ChamadoResumo,
+  ChamadoFinalizado,
+  FinalizacaoInput,
 } from "@/lib/types";
+import { horarioAtualSaoPaulo, statusEncerraAtendimento, statusGeraRecebimento } from "@/lib/status";
 
 export async function listarChamados(): Promise<ChamadoResumo[]> {
   const sql = getSql();
@@ -37,20 +41,80 @@ export async function buscarChamado(id: number): Promise<Chamado | null> {
   return linhas[0] ? { ...linhas[0], id: Number(linhas[0].id) } : null;
 }
 
-export async function atualizarAtendimento(id: number, dados: AtendimentoInput) {
+export async function atualizarAtendimento(id: number, dados: AtendimentoInput): Promise<AtendimentoAtualizado> {
   const sql = getSql();
-  const linhas = await sql<{ id: number }[]>`
-    UPDATE chamados
-    SET hora_chegada = ${dados.hora_chegada},
-        hora_inicio = ${dados.hora_inicio},
-        hora_termino = ${dados.hora_termino},
-        descricao_servico = ${dados.descricao_servico},
-        observacoes_atendimento = ${dados.observacoes_atendimento},
-        atualizado_em = ${new Date().toISOString()}
-    WHERE id = ${id}
-    RETURNING id
-  `;
-  if (!linhas[0]) throw new Error("Chamado não encontrado.");
+  return sql.begin(async (transacao) => {
+    const atuais = await transacao<{ status: string; hora_inicio: string }[]>`
+      SELECT status, hora_inicio FROM chamados WHERE id = ${id} FOR UPDATE
+    `;
+    const atual = atuais[0];
+    if (!atual) throw new Error("Chamado não encontrado.");
+    const horaInicioAnterior = atual.hora_inicio || "";
+    if (
+      horaInicioAnterior
+      && horaInicioAnterior !== dados.hora_inicio
+      && !dados.confirmar_alteracao_hora_inicio
+    ) {
+      throw new Error("Confirme a alteração do horário de início.");
+    }
+    const status = atual.status === "Agendado" && dados.hora_inicio
+      ? "Em atendimento"
+      : atual.status;
+    const linhas = await transacao<AtendimentoAtualizado[]>`
+      UPDATE chamados
+      SET hora_chegada = ${dados.hora_chegada},
+          hora_inicio = ${dados.hora_inicio},
+          hora_termino = ${dados.hora_termino},
+          descricao_servico = ${dados.descricao_servico},
+          observacoes_atendimento = ${dados.observacoes_atendimento},
+          status = ${status},
+          atualizado_em = ${new Date().toISOString()}
+      WHERE id = ${id}
+      RETURNING status, hora_inicio
+    `;
+    return linhas[0];
+  });
+}
+
+export async function finalizarChamado(
+  id: number,
+  dados: FinalizacaoInput,
+): Promise<ChamadoFinalizado> {
+  const sql = getSql();
+  return sql.begin(async (transacao) => {
+    const atuais = await transacao<{
+      status: string;
+      hora_termino: string;
+      observacoes_atendimento: string;
+    }[]>`
+      SELECT status, hora_termino, observacoes_atendimento
+      FROM chamados WHERE id = ${id} FOR UPDATE
+    `;
+    const atual = atuais[0];
+    if (!atual) throw new Error("Chamado não encontrado.");
+    if (statusEncerraAtendimento(atual.status)) {
+      throw new Error(`O chamado já está finalizado como ${atual.status}.`);
+    }
+    const horaTermino = atual.hora_termino || horarioAtualSaoPaulo();
+    const observacoes = dados.motivo
+      ? [atual.observacoes_atendimento, `Motivo da finalização (${dados.status}): ${dados.motivo}`]
+          .filter(Boolean)
+          .join("\n")
+      : atual.observacoes_atendimento;
+    const linhas = await transacao<{ status: FinalizacaoInput["status"]; hora_termino: string }[]>`
+      UPDATE chamados
+      SET status = ${dados.status},
+          hora_termino = ${horaTermino},
+          observacoes_atendimento = ${observacoes},
+          atualizado_em = ${new Date().toISOString()}
+      WHERE id = ${id}
+      RETURNING status, hora_termino
+    `;
+    return {
+      ...linhas[0],
+      gera_recebimento: statusGeraRecebimento(linhas[0].status),
+    };
+  });
 }
 
 export async function buscarPorHash(hash: string) {
