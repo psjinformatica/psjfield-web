@@ -3,10 +3,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { AtendimentoForm } from "@/components/atendimento-form";
+import { AssinaturasAtendimento } from "@/components/assinaturas-atendimento";
 import { ExcluirChamado } from "@/components/excluir-chamado";
 import { MarcarChamadoAcessado } from "@/components/marcar-chamado-acessado";
 import { formatarCidade, formatarData, formatarMoeda } from "@/lib/format";
 import { chamadosService } from "@/lib/server-service";
+import { assinaturasService } from "@/lib/server-signatures";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +22,10 @@ export default async function DetalheChamado({ params }: { params: Promise<{ id:
   if (!Number.isSafeInteger(chamadoId)) notFound();
   const chamado = await chamadosService.buscar(chamadoId);
   if (!chamado) notFound();
+  const [assinaturaCliente, assinaturaTecnico] = await Promise.all([
+    assinaturasService.buscarCliente(chamadoId),
+    assinaturasService.buscarTecnico(),
+  ]);
   const numero = chamado.numero_chamado || `Chamado ${chamado.id}`;
   return (
     <main className="page-shell detail-page">
@@ -61,6 +67,11 @@ export default async function DetalheChamado({ params }: { params: Promise<{ id:
       </section>
 
       <AtendimentoForm chamado={chamado} />
+      <AssinaturasAtendimento
+        chamadoId={chamado.id}
+        clienteInicial={assinaturaCliente}
+        tecnicoInicial={assinaturaTecnico}
+      />
       <section className="danger-zone">
         <ExcluirChamado id={chamado.id} numero={numero} />
       </section>
