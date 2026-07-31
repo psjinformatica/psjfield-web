@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { AtendimentoForm } from "@/components/atendimento-form";
 import { ExcluirChamado } from "@/components/excluir-chamado";
+import { MarcarChamadoAcessado } from "@/components/marcar-chamado-acessado";
 import { formatarCidade, formatarData, formatarMoeda } from "@/lib/format";
 import { chamadosService } from "@/lib/server-service";
 
@@ -22,6 +23,7 @@ export default async function DetalheChamado({ params }: { params: Promise<{ id:
   const numero = chamado.numero_chamado || `Chamado ${chamado.id}`;
   return (
     <main className="page-shell detail-page">
+      <MarcarChamadoAcessado id={chamado.id} />
       <Link className="back-link" href="/"><ArrowLeft size={18} /> Voltar aos chamados</Link>
       <header className="detail-header">
         <div>

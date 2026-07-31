@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { FileUp, LayoutDashboard } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 import { PwaRegister } from "@/components/pwa-register";
@@ -27,7 +28,14 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <PwaRegister />
         <header className="topbar">
           <Link className="brand" href="/" aria-label="PSJField — início">
-            <span>PSJ</span><strong>Field</strong>
+            <Image
+              className="brand-logo"
+              src="/psj-logo.png"
+              alt="PSJ Informática"
+              width={512}
+              height={288}
+              priority
+            />
           </Link>
           <nav aria-label="Navegação principal">
             <Link href="/"><LayoutDashboard size={18} /> Chamados</Link>

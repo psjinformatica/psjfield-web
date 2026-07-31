@@ -41,8 +41,8 @@ a { color: inherit; text-decoration: none; }
   top: 0;
   z-index: 20;
 }
-.brand { align-items: baseline; display: flex; font-size: 1.25rem; letter-spacing: -.04em; }
-.brand span { background: var(--brand); border-radius: 8px; color: white; font-size: .8rem; letter-spacing: .08em; margin-right: 5px; padding: 5px 6px; }
+.brand { align-items: center; background: var(--brand); border-radius: 9px; display: flex; height: 52px; justify-content: center; overflow: hidden; width: 118px; }
+.brand-logo { height: 46px; object-fit: contain; width: 102px; }
 .topbar nav { display: flex; gap: 8px; }
 .topbar nav a { align-items: center; border-radius: 9px; display: flex; font-size: .9rem; font-weight: 650; gap: 7px; padding: 10px 13px; }
 .topbar nav a:hover { background: #e9f0ed; color: var(--brand); }
@@ -67,9 +67,12 @@ select:focus, input:focus, textarea:focus { border-color: var(--brand-2); box-sh
 .text-button { background: none; border: 0; color: var(--brand-2); cursor: pointer; font-weight: 700; }
 
 .card-grid { display: grid; gap: 14px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.call-card { background: var(--surface); border: 1px solid var(--line); border-radius: 17px; min-height: 260px; padding: 20px; position: relative; transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
+.call-card { background: var(--surface); border: 1px solid var(--line); border-radius: 17px; cursor: pointer; display: block; min-height: 260px; padding: 20px; position: relative; touch-action: manipulation; transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
 .call-card:hover { border-color: #a9bbb5; box-shadow: 0 16px 38px rgba(24,54,45,.09); transform: translateY(-2px); }
+.call-card:active { box-shadow: 0 7px 18px rgba(24,54,45,.08); transform: scale(.985); transition-duration: .08s; }
+.call-card:focus-visible { outline: 3px solid rgba(31,102,83,.28); outline-offset: 3px; }
 .call-card-top { align-items: center; display: flex; justify-content: space-between; }
+.card-badges { align-items: center; display: flex; flex-wrap: wrap; gap: 6px; }
 .call-card h3 { font-size: 1.25rem; letter-spacing: -.025em; margin: 20px 0 3px; }
 .client-name { color: var(--muted); margin: 0 0 18px; }
 .card-meta { display: grid; gap: 8px; }
@@ -80,6 +83,10 @@ select:focus, input:focus, textarea:focus { border-color: var(--brand-2); box-sh
 .status { background: #e6ecea; border-radius: 999px; color: #46534f; display: inline-block; font-size: .7rem; font-weight: 800; letter-spacing: .04em; padding: 6px 9px; text-transform: uppercase; }
 .status-agendado { background: #fff1c7; color: #7a5500; }.status-recebido { background: #dcecff; color: #155296; }
 .status-concluído { background: #d9f3e7; color: #12613f; }.status-cancelado { background: #fee4e2; color: #9c241b; }
+.status-em-atendimento { background: #e9e2ff; color: #5b35a5; }
+.status-aguardando-pagamento { background: #ffead6; color: #8a4700; }
+.status-pago { background: #d9f3e7; color: #12613f; }
+.new-badge { background: var(--brand); border-radius: 999px; color: white; font-size: .62rem; font-weight: 850; letter-spacing: .08em; padding: 6px 8px; }
 .empty-state, .error-page { align-items: center; background: white; border: 1px solid var(--line); border-radius: 18px; display: flex; flex-direction: column; padding: 62px 20px; text-align: center; }
 .empty-state h3 { margin: 14px 0 4px; }.empty-state p, .error-page p { color: var(--muted); margin: 0; }
 
@@ -122,6 +129,8 @@ select:focus, input:focus, textarea:focus { border-color: var(--brand-2); box-sh
 @media (max-width: 640px) {
   body { padding-bottom: calc(68px + env(safe-area-inset-bottom)); }
   .topbar { height: 58px; padding: 0 18px; }.topbar nav { display: none; }
+  .brand { height: 46px; width: 104px; }
+  .brand-logo { height: 42px; width: 92px; }
   .mobile-nav { background: rgba(255,255,255,.96); border-top: 1px solid var(--line); bottom: 0; display: grid; grid-template-columns: repeat(2, 1fr); left: 0; padding-bottom: env(safe-area-inset-bottom); position: fixed; right: 0; z-index: 30; }
   .mobile-nav a { align-items: center; color: var(--muted); display: flex; flex-direction: column; font-size: .68rem; font-weight: 700; gap: 3px; padding: 10px; }
   .page-shell { padding: 27px 16px 38px; }.hero { align-items: start; gap: 18px; }.hero h1 { font-size: 2.45rem; }.hero-copy { font-size: .9rem; }.metric { min-width: 88px; padding: 14px; }

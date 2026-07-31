@@ -2,9 +2,16 @@
 
 import { CalendarDays, ChevronRight, MapPin, Search } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 
-import { formatarCidade, formatarData, formatarMoeda } from "@/lib/format";
+import {
+  assinarAcessados,
+  idsAcessados,
+  marcarComoAcessado,
+  snapshotAcessados,
+  snapshotServidor,
+} from "@/lib/chamados-acessados";
+import { formatarCidade, formatarDataRelativa, formatarMoeda } from "@/lib/format";
 import type { ChamadoResumo } from "@/lib/types";
 
 const statusDisponiveis = ["Todos", "Agendado", "Recebido", "Concluído", "Cancelado"];
@@ -12,6 +19,9 @@ const statusDisponiveis = ["Todos", "Agendado", "Recebido", "Concluído", "Cance
 export function ChamadosLista({ chamados }: { chamados: ChamadoResumo[] }) {
   const [busca, setBusca] = useState("");
   const [status, setStatus] = useState("Todos");
+  const acessados = idsAcessados(
+    useSyncExternalStore(assinarAcessados, snapshotAcessados, snapshotServidor),
+  );
   const filtrados = useMemo(() => {
     const termo = busca.trim().toLocaleLowerCase("pt-BR");
     return chamados.filter((chamado) => {
@@ -58,17 +68,25 @@ export function ChamadosLista({ chamados }: { chamados: ChamadoResumo[] }) {
       {filtrados.length ? (
         <div className="card-grid">
           {filtrados.map((chamado) => (
-            <Link className="call-card" href={`/chamados/${chamado.id}`} key={chamado.id}>
+            <Link
+              className="call-card"
+              href={`/chamados/${chamado.id}`}
+              key={chamado.id}
+              onClick={() => marcarComoAcessado(chamado.id)}
+            >
               <div className="call-card-top">
-                <span className={`status status-${chamado.status.toLocaleLowerCase("pt-BR").replaceAll(" ", "-")}`}>
-                  {chamado.status || "Sem status"}
-                </span>
+                <div className="card-badges">
+                  <span className={`status status-${chamado.status.toLocaleLowerCase("pt-BR").replaceAll(" ", "-")}`}>
+                    {chamado.status || "Sem status"}
+                  </span>
+                  {!acessados.has(chamado.id) && <span className="new-badge">NOVO</span>}
+                </div>
                 <ChevronRight size={20} aria-hidden="true" />
               </div>
               <h3>{chamado.numero_chamado || `Chamado ${chamado.id}`}</h3>
               <p className="client-name">{chamado.cliente || "Cliente não informado"}</p>
               <div className="card-meta">
-                <span><CalendarDays size={16} />{formatarData(chamado.data_agendada) || "Sem data"} · {chamado.hora_agendada || "--:--"}</span>
+                <span><CalendarDays size={16} />{formatarDataRelativa(chamado.data_agendada) || "Sem data"} · {chamado.hora_agendada || "--:--"}</span>
                 <span><MapPin size={16} />{formatarCidade(chamado.cidade, chamado.estado) || "Cidade não informada"}</span>
               </div>
               {chamado.atividade && <p className="activity">{chamado.atividade}</p>}
