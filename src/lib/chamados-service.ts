@@ -1,11 +1,17 @@
-import type { AtendimentoInput, Chamado, ChamadoImportacao, ChamadoResumo } from "@/lib/types";
+import type {
+  AtendimentoInput,
+  Chamado,
+  ChamadoDuplicado,
+  ChamadoImportacao,
+  ChamadoResumo,
+} from "@/lib/types";
 import { validarAtendimento } from "@/lib/validation";
 
 export interface ChamadosGateway {
   listar(): Promise<ChamadoResumo[]>;
   buscar(id: number): Promise<Chamado | null>;
   atualizar(id: number, dados: AtendimentoInput): Promise<void>;
-  buscarHash(hash: string): Promise<{ chamado_id: number } | null>;
+  buscarHash(hash: string): Promise<ChamadoDuplicado | null>;
   importar(chamado: ChamadoImportacao, nomeArquivo: string): Promise<number>;
   excluir(id: number): Promise<void>;
 }

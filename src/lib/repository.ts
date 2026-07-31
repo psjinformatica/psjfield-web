@@ -1,7 +1,13 @@
 import "server-only";
 
 import { getSql } from "@/lib/db";
-import type { AtendimentoInput, Chamado, ChamadoImportacao, ChamadoResumo } from "@/lib/types";
+import type {
+  AtendimentoInput,
+  Chamado,
+  ChamadoDuplicado,
+  ChamadoImportacao,
+  ChamadoResumo,
+} from "@/lib/types";
 
 export async function listarChamados(): Promise<ChamadoResumo[]> {
   const sql = getSql();
@@ -49,13 +55,14 @@ export async function atualizarAtendimento(id: number, dados: AtendimentoInput) 
 
 export async function buscarPorHash(hash: string) {
   const sql = getSql();
-  const linhas = await sql<{ chamado_id: number; numero_chamado: string }[]>`
-    SELECT e.chamado_id, c.numero_chamado
+  const linhas = await sql<ChamadoDuplicado[]>`
+    SELECT e.chamado_id, c.numero_chamado, c.cliente, c.cidade, c.estado,
+           e.importado_em
     FROM emails_importados e
     JOIN chamados c ON c.id = e.chamado_id
     WHERE e.hash_email = ${hash}
   `;
-  return linhas[0] || null;
+  return linhas[0] ? { ...linhas[0], chamado_id: Number(linhas[0].chamado_id) } : null;
 }
 
 const colunasImportacao = [

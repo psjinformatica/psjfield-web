@@ -63,7 +63,15 @@ class GatewayMemoria implements ChamadosGateway {
   }
   async buscarHash(hash: string) {
     const chamado_id = this.hashes.get(hash);
-    return chamado_id ? { chamado_id } : null;
+    const chamado = chamado_id ? this.registros.get(chamado_id) : null;
+    return chamado_id && chamado ? {
+      chamado_id,
+      numero_chamado: chamado.numero_chamado,
+      cliente: chamado.cliente,
+      cidade: chamado.cidade,
+      estado: chamado.estado,
+      importado_em: "2026-07-30T17:32:00.000Z",
+    } : null;
   }
   async importar(chamado: ChamadoImportacao) {
     if (this.falhar) throw new Error("Banco indisponível");
@@ -124,6 +132,11 @@ describe("ChamadosService", () => {
     const service = new ChamadosService(gateway);
     const chamado = importacao();
     const id = await service.importar(chamado, "teste.eml");
+    expect(await service.buscarHash(chamado.hash_email)).toMatchObject({
+      chamado_id: id,
+      numero_chamado: "MI-100",
+      cliente: "Claro",
+    });
     await expect(service.importar(chamado, "copia.eml")).rejects.toThrow("já foi importado");
     await service.excluir(id);
     expect(await service.buscar(id)).toBeNull();

@@ -67,3 +67,12 @@ export type PreviaImportacao = {
   reconhecidoGrupoEasy: boolean;
   nomeArquivo: string;
 };
+
+export type ChamadoDuplicado = {
+  chamado_id: number;
+  numero_chamado: string;
+  cliente: string;
+  cidade: string;
+  estado: string;
+  importado_em: string;
+};

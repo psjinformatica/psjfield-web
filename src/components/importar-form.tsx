@@ -1,12 +1,14 @@
 "use client";
 
 import { CheckCircle2, File, LoaderCircle, UploadCloud } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import type { PreviaImportacao } from "@/lib/types";
+import { formatarCidade, formatarDataHora } from "@/lib/format";
+import type { ChamadoDuplicado, PreviaImportacao } from "@/lib/types";
 
-type RespostaPrevia = PreviaImportacao & { duplicado: boolean; erro?: string };
+type RespostaPrevia = PreviaImportacao & { duplicado: ChamadoDuplicado | null; erro?: string };
 
 const campos = [
   ["numero_chamado", "Número do chamado"],
@@ -90,13 +92,37 @@ export function ImportarForm() {
         </button>
       </section>
       {erro && <p className="feedback error" role="alert">{erro}</p>}
-      {previa && (
+      {previa?.duplicado && (
+        <section className="review-card duplicate-card">
+          <div className="section-heading">
+            <span><CheckCircle2 size={18} /></span>
+            <div>
+              <h2>Este chamado já foi importado anteriormente.</h2>
+              <p>A duplicidade continua bloqueada. Você pode abrir o registro existente.</p>
+            </div>
+          </div>
+          <dl className="duplicate-details">
+            {previa.duplicado.numero_chamado && <div><dt>Chamado</dt><dd>{previa.duplicado.numero_chamado}</dd></div>}
+            {previa.duplicado.cliente && <div><dt>Cliente</dt><dd>{previa.duplicado.cliente}</dd></div>}
+            {formatarCidade(previa.duplicado.cidade, previa.duplicado.estado) && (
+              <div><dt>Cidade</dt><dd>{formatarCidade(previa.duplicado.cidade, previa.duplicado.estado)}</dd></div>
+            )}
+            {previa.duplicado.importado_em && (
+              <div><dt>Importado em</dt><dd>{formatarDataHora(previa.duplicado.importado_em)}</dd></div>
+            )}
+          </dl>
+          <div className="duplicate-actions">
+            <Link className="primary-button" href={`/chamados/${previa.duplicado.chamado_id}`}>Abrir chamado</Link>
+            <Link className="secondary-button" href="/chamados">Voltar para lista</Link>
+          </div>
+        </section>
+      )}
+      {previa && !previa.duplicado && (
         <section className="review-card">
           <div className="section-heading">
             <span><CheckCircle2 size={18} /></span>
             <div><h2>Revise antes de importar</h2><p>{previa.reconhecidoGrupoEasy ? "Padrão Grupo Easy reconhecido." : "E-mail genérico: somente dados seguros foram carregados."}</p></div>
           </div>
-          {previa.duplicado && <p className="feedback error">Este e-mail já foi importado.</p>}
           <div className="review-grid">
             {campos.map(([campo, rotulo]) => (
               <label key={campo}>{rotulo}
@@ -114,7 +140,7 @@ export function ImportarForm() {
           <label>Observações
             <textarea rows={4} value={previa.chamado.observacoes} onChange={(evento) => atualizar("observacoes", evento.target.value)} />
           </label>
-          <button className="primary-button" disabled={previa.duplicado || carregando} onClick={confirmar}>
+          <button className="primary-button" disabled={carregando} onClick={confirmar}>
             {carregando ? "Importando..." : "Confirmar importação"}
           </button>
         </section>

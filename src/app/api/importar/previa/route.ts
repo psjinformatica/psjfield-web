@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     if (arquivo.size > 10 * 1024 * 1024) throw new Error("O arquivo excede o limite de 10 MB.");
     const previa = await interpretarEml(new Uint8Array(await arquivo.arrayBuffer()), arquivo.name);
     const duplicado = await chamadosService.buscarHash(previa.chamado.hash_email);
-    return NextResponse.json({ ...previa, duplicado: Boolean(duplicado) });
+    return NextResponse.json({ ...previa, duplicado });
   } catch (erro) {
     return NextResponse.json(
       { erro: erro instanceof Error ? erro.message : "Não foi possível ler o e-mail." },

@@ -28,6 +28,23 @@ export function formatarCidade(cidade: string, estado: string) {
   return estado ? `${cidade}/${estado}` : cidade;
 }
 
+export function formatarDataHora(valor: string) {
+  const data = new Date(valor);
+  if (Number.isNaN(data.getTime())) return valor;
+  const partes = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(data);
+  const parte = (tipo: Intl.DateTimeFormatPartTypes) =>
+    partes.find((item) => item.type === tipo)?.value || "";
+  return `${parte("day")}/${parte("month")}/${parte("year")} às ${parte("hour")}:${parte("minute")}`;
+}
+
 export function formatarMoeda(valor: string | null) {
   if (valor === null || valor === "") return "";
   return new Intl.NumberFormat("pt-BR", {
