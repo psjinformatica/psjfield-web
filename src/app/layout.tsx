@@ -26,10 +26,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="pt-BR">
       <body>
         <PwaRegister />
-        <header className="topbar">
+        <header className="topbar app-header">
           <Link className="brand" href="/" aria-label="PSJField — início">
             <Image
-              className="brand-logo"
+              className="brand-logo app-logo"
               src="/psj-logo.png"
               alt="PSJ Informática"
               width={512}
