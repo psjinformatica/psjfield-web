@@ -151,6 +151,7 @@ select:focus, input:focus, textarea:focus { border-color: var(--brand-2); box-sh
   .filters { grid-template-columns: 1fr; }.card-grid { grid-template-columns: 1fr; }.call-card { min-height: 0; }
   .detail-header { align-items: start; flex-direction: column; gap: 12px; }.detail-card, .form-card, .review-card, .upload-card { border-radius: 15px; padding: 18px; }
   .quick-facts, .time-grid, .data-grid, .data-grid.compact, .review-grid, .duplicate-details, .signature-fields { grid-template-columns: 1fr; }
+  .rat-form input[type="date"], .rat-form input[type="time"] { appearance: none; display: block; inline-size: 100%; max-inline-size: 100%; min-inline-size: 0; -webkit-appearance: none; width: 100%; }
   .rat-fieldset, .rat-check-grid { display: block; width: 100%; }.rat-check-grid label { align-items: flex-start; display: flex; flex-flow: row nowrap; justify-content: flex-start; margin-bottom: 10px; width: 100%; }.rat-check-grid label:last-child { margin-bottom: 0; }.rat-versions > div { align-items: stretch; grid-template-columns: 1fr; }.rat-versions > div > div { flex-direction: column; }
   .signature-actions { align-items: stretch; flex-direction: column; }.signature-actions button { width: 100%; }
   .quick-facts { gap: 8px; }.data-grid { gap: 14px; }.delete-confirm > div { align-items: stretch; flex-direction: column; }.delete-confirm form button { width: 100%; }
