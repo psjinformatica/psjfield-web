@@ -8,6 +8,17 @@ export type AssinaturaCanvasRef = {
   estaVazia: () => boolean;
 };
 
+type CanvasExportavel = Pick<HTMLCanvasElement, "width" | "height" | "getContext" | "toBlob">;
+
+export function canvasParaPng(canvas: CanvasExportavel | null) {
+  if (!canvas || !canvas.width || !canvas.height || !canvas.getContext("2d")) {
+    return Promise.resolve<Blob | null>(null);
+  }
+  return new Promise<Blob | null>((resolver) => {
+    canvas.toBlob((blob) => resolver(blob), "image/png");
+  });
+}
+
 export const AssinaturaCanvas = forwardRef<AssinaturaCanvasRef, {
   onPreviewChange?: (imagem: string | null) => void;
 }>(function AssinaturaCanvas({ onPreviewChange }, ref) {
@@ -60,7 +71,7 @@ export const AssinaturaCanvas = forwardRef<AssinaturaCanvasRef, {
       prepararCanvas(false);
       onPreviewChange?.(null);
     },
-    gerarPng: () => new Promise((resolver) => canvasRef.current?.toBlob(resolver, "image/png") || resolver(null)),
+    gerarPng: () => canvasParaPng(canvasRef.current),
     estaVazia: () => vaziaRef.current,
   }));
 
