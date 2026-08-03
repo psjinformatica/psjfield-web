@@ -65,6 +65,15 @@ export type ChamadoFinalizado = {
   gera_recebimento: boolean;
 };
 
+export type ReaberturaInput = {
+  motivo: string;
+};
+
+export type ChamadoReaberto = {
+  status: "Em atendimento";
+  reaberto_em: string;
+};
+
 export type ChamadoImportacao = Omit<
   Chamado,
   | "id"

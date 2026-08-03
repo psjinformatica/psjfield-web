@@ -10,6 +10,8 @@ import type {
   ChamadoResumo,
   ChamadoFinalizado,
   FinalizacaoInput,
+  ChamadoReaberto,
+  ReaberturaInput,
 } from "@/lib/types";
 import { horarioAtualSaoPaulo, statusEncerraAtendimento, statusGeraRecebimento } from "@/lib/status";
 
@@ -114,6 +116,41 @@ export async function finalizarChamado(
       ...linhas[0],
       gera_recebimento: statusGeraRecebimento(linhas[0].status),
     };
+  });
+}
+
+export async function reabrirChamado(
+  id: number,
+  dados: ReaberturaInput,
+): Promise<ChamadoReaberto> {
+  const sql = getSql();
+  return sql.begin(async (transacao) => {
+    const atuais = await transacao<{ status: string }[]>`
+      SELECT status FROM chamados WHERE id = ${id} FOR UPDATE
+    `;
+    const atual = atuais[0];
+    if (!atual) throw new Error("Chamado não encontrado.");
+    if (!statusEncerraAtendimento(atual.status)) {
+      throw new Error(`Não é possível reabrir um chamado com status ${atual.status}.`);
+    }
+    const reabertoEm = new Date().toISOString();
+    await transacao`
+      INSERT INTO reaberturas_atendimento
+        (chamado_id, status_anterior, motivo, reaberto_em)
+      VALUES
+        (${id}, ${atual.status}, ${dados.motivo}, ${reabertoEm})
+    `;
+    await transacao`
+      UPDATE rats SET atual = FALSE, status_rat = 'Substituída'
+      WHERE chamado_id = ${id} AND atual = TRUE
+    `;
+    const linhas = await transacao<{ status: "Em atendimento" }[]>`
+      UPDATE chamados
+      SET status = 'Em atendimento', atualizado_em = ${reabertoEm}
+      WHERE id = ${id}
+      RETURNING status
+    `;
+    return { status: linhas[0].status, reaberto_em: reabertoEm };
   });
 }
 

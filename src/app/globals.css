@@ -118,6 +118,7 @@ select:focus, input:focus, textarea:focus { border-color: var(--brand-2); box-sh
 .feedback { border-radius: 10px; font-size: .85rem; margin: 12px 0; padding: 11px 13px; }.feedback.error { background: #feeceb; color: #94251d; }.feedback.success { background: #e2f4eb; color: #14603e; }
 .detail-page-closed .detail-header { border-left: 4px solid var(--muted); padding-left: 16px; }
 .closed-notice { background: #f3f5f4; border: 1px solid var(--line); border-radius: 10px; color: #46534f; font-size: .85rem; margin: 0 0 18px; padding: 12px 14px; }
+.reopen-panel { background: #f4f7fa; border: 1px solid #d5e1ea; border-radius: 12px; margin-bottom: 20px; padding: 16px; }.reopen-panel h3 { font-size: 1rem; margin: 0 0 4px; }.reopen-panel > p { color: var(--muted); font-size: .8rem; margin: 0 0 14px; }.reopen-form { display: grid; gap: 12px; }.reopen-form label { margin: 0; }.reopen-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .finish-panel { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 22px; }
 .finish-panel h3 { font-size: 1rem; margin: 0 0 4px; }.finish-panel > p { color: var(--muted); font-size: .8rem; margin: 0 0 16px; }
 .danger-zone { border-top: 1px solid var(--line); margin-top: 28px; padding: 25px 0; }.danger-link { align-items: center; background: none; border: 0; color: var(--danger); cursor: pointer; display: flex; gap: 7px; }
@@ -154,6 +155,7 @@ select:focus, input:focus, textarea:focus { border-color: var(--brand-2); box-sh
   .rat-form input[type="date"], .rat-form input[type="time"] { appearance: none; display: block; inline-size: 100%; max-inline-size: 100%; min-inline-size: 0; -webkit-appearance: none; width: 100%; }
   .rat-fieldset, .rat-check-grid { display: block; width: 100%; }.rat-check-grid label { align-items: flex-start; display: flex; flex-flow: row nowrap; justify-content: flex-start; margin-bottom: 10px; width: 100%; }.rat-check-grid label:last-child { margin-bottom: 0; }.rat-versions > div { align-items: stretch; grid-template-columns: 1fr; }.rat-versions > div > div { flex-direction: column; }
   .signature-actions { align-items: stretch; flex-direction: column; }.signature-actions button { width: 100%; }
+  .reopen-actions { align-items: stretch; flex-direction: column-reverse; }.reopen-actions button { width: 100%; }
   .quick-facts { gap: 8px; }.data-grid { gap: 14px; }.delete-confirm > div { align-items: stretch; flex-direction: column; }.delete-confirm form button { width: 100%; }
 }
 

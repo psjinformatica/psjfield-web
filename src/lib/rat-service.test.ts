@@ -56,6 +56,17 @@ describe("RatService", () => {
     const c = service(); await c.service.gerarRat(1, revisao); await c.service.gerarRat(1, revisao);
     expect(c.gateway.registros.map((r) => [r.versao, r.atual])).toEqual([[1, false], [2, true]]);
   });
+  it("gera nova versão após reabertura sem sobrescrever a RAT anterior", async () => {
+    const c = service("Em atendimento");
+    c.gateway.registros.push({
+      id: "rat-anterior", chamado_id: 1, versao: 1, caminho_pdf: "1/rat-anterior.pdf",
+      hash_pdf: "a".repeat(64), tecnico: "", status_rat: "Substituída", atual: false,
+      dados_revisao: revisao, gerado_em: "2026-07-31T14:00:00Z",
+    });
+    const nova = await c.service.gerarRat(1, revisao);
+    expect(nova).toMatchObject({ versao: 2, atual: true });
+    expect(c.gateway.registros[0]).toMatchObject({ caminho_pdf: "1/rat-anterior.pdf", atual: false });
+  });
   it("remove o PDF novo quando a persistência falha", async () => {
     const c = service(); c.gateway.falhar = true; await expect(c.service.gerarRat(1, revisao)).rejects.toThrow("Banco indisponível");
     expect(c.storage.removidos).toEqual(["1/uuid-fixo.pdf"]);

@@ -30,10 +30,18 @@ export const finalizacaoSchema = z.object({
   }
 });
 
+export const reaberturaSchema = z.object({
+  motivo: z.string().trim().min(1, "Informe o motivo da reabertura.").max(10_000),
+});
+
 export function validarAtendimento(input: unknown) {
   return atendimentoSchema.parse(input);
 }
 
 export function validarFinalizacao(input: unknown) {
   return finalizacaoSchema.parse(input);
+}
+
+export function validarReabertura(input: unknown) {
+  return reaberturaSchema.parse(input);
 }

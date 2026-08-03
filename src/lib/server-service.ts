@@ -9,6 +9,7 @@ import {
   finalizarChamado,
   importarChamado,
   listarChamados,
+  reabrirChamado,
 } from "@/lib/repository";
 
 const gateway: ChamadosGateway = {
@@ -16,6 +17,7 @@ const gateway: ChamadosGateway = {
   buscar: buscarChamado,
   atualizar: atualizarAtendimento,
   finalizar: finalizarChamado,
+  reabrir: reabrirChamado,
   buscarHash: buscarPorHash,
   importar: importarChamado,
   excluir: excluirChamado,

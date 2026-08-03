@@ -7,14 +7,17 @@ import type {
   ChamadoResumo,
   ChamadoFinalizado,
   FinalizacaoInput,
+  ChamadoReaberto,
+  ReaberturaInput,
 } from "@/lib/types";
-import { validarAtendimento, validarFinalizacao } from "@/lib/validation";
+import { validarAtendimento, validarFinalizacao, validarReabertura } from "@/lib/validation";
 
 export interface ChamadosGateway {
   listar(): Promise<ChamadoResumo[]>;
   buscar(id: number): Promise<Chamado | null>;
   atualizar(id: number, dados: AtendimentoInput): Promise<AtendimentoAtualizado>;
   finalizar(id: number, dados: FinalizacaoInput): Promise<ChamadoFinalizado>;
+  reabrir(id: number, dados: ReaberturaInput): Promise<ChamadoReaberto>;
   buscarHash(hash: string): Promise<ChamadoDuplicado | null>;
   importar(chamado: ChamadoImportacao, nomeArquivo: string): Promise<number>;
   excluir(id: number): Promise<void>;
@@ -44,6 +47,11 @@ export class ChamadosService {
   async finalizar(id: number, entrada: unknown) {
     if (!Number.isSafeInteger(id) || id <= 0) throw new Error("Chamado inválido.");
     return this.gateway.finalizar(id, validarFinalizacao(entrada));
+  }
+
+  async reabrir(id: number, entrada: unknown) {
+    if (!Number.isSafeInteger(id) || id <= 0) throw new Error("Chamado inválido.");
+    return this.gateway.reabrir(id, validarReabertura(entrada));
   }
 
   async importar(chamado: ChamadoImportacao, nomeArquivo: string) {

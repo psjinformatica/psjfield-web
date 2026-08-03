@@ -8,6 +8,7 @@ import type {
   ChamadoImportacao,
   ChamadoResumo,
   FinalizacaoInput,
+  ReaberturaInput,
 } from "@/lib/types";
 
 function importacao(hash = "hash-1"): ChamadoImportacao {
@@ -53,6 +54,9 @@ class GatewayMemoria implements ChamadosGateway {
   hashes = new Map<string, number>();
   proximoId = 1;
   falhar = false;
+  reaberturas: Array<{ chamado_id: number; status_anterior: string; motivo: string }> = [];
+  assinaturaCliente = "assinatura-preservada.png";
+  ratAtual = { versao: 1, atual: true, caminho: "rat-v1.pdf" };
 
   async listar(): Promise<ChamadoResumo[]> {
     if (this.falhar) throw new Error("Banco indisponível");
@@ -84,6 +88,18 @@ class GatewayMemoria implements ChamadosGateway {
       : atual.observacoes_atendimento;
     this.registros.set(id, { ...atual, status: dados.status, hora_termino, observacoes_atendimento });
     return { status: dados.status, hora_termino, gera_recebimento: statusGeraRecebimento(dados.status) };
+  }
+  async reabrir(id: number, dados: ReaberturaInput) {
+    if (this.falhar) throw new Error("Banco indisponível");
+    const atual = this.registros.get(id);
+    if (!atual) throw new Error("Chamado não encontrado.");
+    if (!statusEncerraAtendimento(atual.status)) {
+      throw new Error(`Não é possível reabrir um chamado com status ${atual.status}.`);
+    }
+    this.reaberturas.push({ chamado_id: id, status_anterior: atual.status, motivo: dados.motivo });
+    this.ratAtual.atual = false;
+    this.registros.set(id, { ...atual, status: "Em atendimento" });
+    return { status: "Em atendimento" as const, reaberto_em: "2026-08-03T13:00:00.000Z" };
   }
   async buscarHash(hash: string) {
     const chamado_id = this.hashes.get(hash);
@@ -208,6 +224,49 @@ describe("ChamadosService", () => {
     gateway.registros.set(id, { ...(await service.buscar(id))!, hora_termino: "11:45" });
     await expect(service.finalizar(id, { status: "Cancelado", motivo: "" })).rejects.toThrow("Informe o motivo");
     expect((await service.finalizar(id, { status: "Cancelado", motivo: "Sem acesso" })).hora_termino).toBe("11:45");
+  });
+
+  it.each(["Concluído", "Improdutivo", "Cancelado"])("reabre %s como Em atendimento e registra histórico", async (status) => {
+    const gateway = new GatewayMemoria();
+    const service = new ChamadosService(gateway);
+    const id = await service.importar(importacao(), "teste.eml");
+    gateway.registros.set(id, {
+      ...(await service.buscar(id))!,
+      status,
+      descricao_servico: "Descrição preservada",
+      observacoes_atendimento: "Observação preservada",
+      hora_inicio: "09:00",
+      hora_termino: "10:30",
+    });
+    const assinaturaAntes = gateway.assinaturaCliente;
+    const caminhoRatAntes = gateway.ratAtual.caminho;
+    await expect(service.reabrir(id, { motivo: "Ajuste de descrição" })).resolves.toMatchObject({ status: "Em atendimento" });
+    expect(await service.buscar(id)).toMatchObject({
+      status: "Em atendimento",
+      descricao_servico: "Descrição preservada",
+      observacoes_atendimento: "Observação preservada",
+      hora_inicio: "09:00",
+      hora_termino: "10:30",
+    });
+    expect(gateway.reaberturas[0]).toMatchObject({ status_anterior: status, motivo: "Ajuste de descrição" });
+    expect(gateway.assinaturaCliente).toBe(assinaturaAntes);
+    expect(gateway.ratAtual).toMatchObject({ atual: false, caminho: caminhoRatAntes, versao: 1 });
+  });
+
+  it.each(["Agendado", "Em atendimento"])("não permite reabrir chamado em %s", async (status) => {
+    const gateway = new GatewayMemoria();
+    const service = new ChamadosService(gateway);
+    const id = await service.importar(importacao(), "teste.eml");
+    gateway.registros.set(id, { ...(await service.buscar(id))!, status });
+    await expect(service.reabrir(id, { motivo: "Status incorreto" })).rejects.toThrow("Não é possível reabrir");
+  });
+
+  it("exige motivo para reabrir", async () => {
+    const gateway = new GatewayMemoria();
+    const service = new ChamadosService(gateway);
+    const id = await service.importar(importacao(), "teste.eml");
+    gateway.registros.set(id, { ...(await service.buscar(id))!, status: "Concluído" });
+    await expect(service.reabrir(id, { motivo: "   " })).rejects.toThrow("Informe o motivo");
   });
 
   it("força novos chamados para Agendado na fronteira de persistência", async () => {
