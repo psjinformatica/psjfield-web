@@ -21,9 +21,9 @@ export async function listarChamados(): Promise<ChamadoResumo[]> {
     SELECT id, numero_chamado, status, data_agendada, hora_agendada,
            cliente, projeto, cidade, estado, atividade, valor_base
     FROM chamados
-    ORDER BY NULLIF(data_agendada, '') ASC NULLS LAST,
-             NULLIF(hora_agendada, '') ASC NULLS LAST,
-             numero_chamado ASC
+    ORDER BY NULLIF(data_agendada, '') DESC NULLS LAST,
+             NULLIF(hora_agendada, '') DESC NULLS LAST,
+             id DESC
   `;
   return linhas.map((linha) => ({ ...linha, id: Number(linha.id) }));
 }
