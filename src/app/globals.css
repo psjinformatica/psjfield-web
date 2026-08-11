@@ -166,7 +166,7 @@ select:focus, input:focus, textarea:focus { border-color: var(--brand-2); box-sh
   .mobile-nav { background: rgba(8,43,71,.97); border-top: 1px solid var(--brand-2); bottom: 0; display: grid; grid-template-columns: repeat(3, 1fr); left: 0; padding-bottom: env(safe-area-inset-bottom); position: fixed; right: 0; z-index: 30; }
   .mobile-nav a { align-items: center; color: white; display: flex; flex-direction: column; font-size: .68rem; font-weight: 700; gap: 3px; padding: 10px; }
   .page-shell { padding: 27px 16px 38px; }.hero { align-items: start; gap: 18px; }.hero h1 { font-size: 2.45rem; }.hero-copy { font-size: .9rem; }.metric { min-width: 88px; padding: 14px; }
-  .finance-hero { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr) minmax(128px, 47%); }
+  .finance-hero { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr) minmax(128px, 44%); }
   .finance-hero h1 { font-size: clamp(1.7rem, 8vw, 2.25rem); }
   .finance-hero .hero-copy { font-size: .76rem; line-height: 1.4; }
   .finance-total-card { justify-content: center; min-height: 100px; min-width: 0; padding: 26px 11px 8px; width: 100%; }
@@ -192,19 +192,19 @@ select:focus, input:focus, textarea:focus { border-color: var(--brand-2); box-sh
   .finance-card dt { font-size: .55rem; }
   .finance-card dd { font-size: .68rem; line-height: 1.2; overflow-wrap: anywhere; }
   .finance-card dl div:nth-child(-n+3) dd { white-space: nowrap; }
-  .receive-form { column-gap: 7px; grid-template-columns: repeat(2, minmax(0, 1fr)); padding-top: 8px; row-gap: 5px; }
-  .receive-form label { line-height: 1.1; }
-  .receive-form input { box-sizing: border-box; height: 44px; margin-top: 4px; padding: 6px 7px; }
-  .receive-form input[type="date"] { -webkit-min-logical-width: 0; line-height: normal; min-height: 44px; }
+  .receive-form { align-items: start; column-gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); padding-top: 8px; row-gap: 6px; }
+  .receive-form > label { display: grid; grid-template-rows: auto 44px; line-height: 1.1; min-width: 0; row-gap: 4px; }
+  .receive-form input { box-sizing: border-box; height: 44px; margin: 0; padding: 6px 7px; }
+  .receive-form input[type="date"] { -webkit-min-logical-width: 0; display: block; line-height: normal; max-width: 100%; min-height: 44px; width: 100%; }
   .receive-form button { grid-column: 1 / -1; min-height: 40px; padding: 6px 12px; }
-  .currency-input { height: 44px; margin-top: 4px; }
-  .currency-input > span { padding-left: 7px; }
-  .currency-input input { height: 42px; margin: 0; }
+  .currency-input { box-sizing: border-box; gap: 5px; height: 44px; margin: 0; padding: 0 7px; width: 100%; }
+  .currency-input > span { line-height: 1; padding: 0; }
+  .currency-input input { background: transparent; height: 100%; line-height: normal; margin: 0; padding: 0; }
   .quick-facts { gap: 8px; }.data-grid { gap: 14px; }.delete-confirm > div { align-items: stretch; flex-direction: column; }.delete-confirm form button { width: 100%; }
 }
 
 @media (max-width: 360px) {
-  .finance-hero { grid-template-columns: minmax(0, 1fr) minmax(126px, 47%); }
+  .finance-hero { grid-template-columns: minmax(0, 1fr) minmax(128px, 44%); }
   .metric .finance-total-value { font-size: clamp(1.12rem, 6vw, 1.3rem); }
   .finance-card dl { gap: 3px; }
   .finance-card dl div { padding-inline: 3px; }
