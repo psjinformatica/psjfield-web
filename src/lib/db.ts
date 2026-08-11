@@ -15,7 +15,7 @@ function databaseUrl() {
 export function getSql() {
   if (!globalDatabase.psjfieldSql) {
     globalDatabase.psjfieldSql = postgres(databaseUrl(), {
-      max: 5,
+      max: 1,
       idle_timeout: 20,
       connect_timeout: 10,
       prepare: false,
