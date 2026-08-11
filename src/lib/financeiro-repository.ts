@@ -79,8 +79,9 @@ export async function listarContasReceber(): Promise<ContaReceber[]> {
              ELSE 'A receber'
            END AS rotulo_situacao
     FROM contas_receber cr
-    ORDER BY COALESCE(cr.recebido_em, ((cr.encerrado_em AT TIME ZONE 'America/Sao_Paulo')::date + cr.prazo_dias)) DESC,
-             cr.encerrado_em DESC
+    ORDER BY ((cr.encerrado_em AT TIME ZONE 'America/Sao_Paulo')::date + cr.prazo_dias) ASC NULLS LAST,
+             cr.encerrado_em ASC NULLS LAST,
+             cr.numero_chamado_snapshot ASC
   `;
   return linhas.map((linha) => ({ ...linha, chamado_id: Number(linha.chamado_id) }));
 }
