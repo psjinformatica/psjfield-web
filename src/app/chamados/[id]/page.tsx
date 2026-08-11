@@ -6,7 +6,10 @@ import { AtendimentoForm } from "@/components/atendimento-form";
 import { AssinaturasAtendimento } from "@/components/assinaturas-atendimento";
 import { ExcluirChamado } from "@/components/excluir-chamado";
 import { MarcarChamadoAcessado } from "@/components/marcar-chamado-acessado";
-import { formatarCidade, formatarData, formatarMoeda } from "@/lib/format";
+import { RatArquivoAcoes } from "@/components/rat-arquivo-acoes";
+import { formatarCidade, formatarData, formatarDataHora, formatarMoeda } from "@/lib/format";
+import { nomeArquivoRat } from "@/lib/rat-arquivo";
+import { ratService } from "@/lib/server-rat";
 import { chamadosService } from "@/lib/server-service";
 import { assinaturasService } from "@/lib/server-signatures";
 import { statusEncerraAtendimento } from "@/lib/status";
@@ -23,12 +26,14 @@ export default async function DetalheChamado({ params }: { params: Promise<{ id:
   if (!Number.isSafeInteger(chamadoId)) notFound();
   const chamado = await chamadosService.buscar(chamadoId);
   if (!chamado) notFound();
-  const [assinaturaCliente, assinaturaTecnico] = await Promise.all([
+  const [assinaturaCliente, assinaturaTecnico, rats] = await Promise.all([
     assinaturasService.buscarCliente(chamadoId),
     assinaturasService.buscarTecnico(),
+    ratService.listar(chamadoId),
   ]);
   const numero = chamado.numero_chamado || `Chamado ${chamado.id}`;
   const encerrado = statusEncerraAtendimento(chamado.status);
+  const ratAtual = rats.find((rat) => rat.atual) || rats[0];
   return (
     <main className={`page-shell detail-page${encerrado ? " detail-page-closed" : ""}`}>
       <MarcarChamadoAcessado id={chamado.id} />
@@ -68,7 +73,7 @@ export default async function DetalheChamado({ params }: { params: Promise<{ id:
         </div>
       </section>
 
-      <AtendimentoForm chamado={chamado} />
+      <AtendimentoForm key={`${chamado.id}-${chamado.hora_chegada}-${chamado.hora_inicio}-${chamado.hora_termino}`} chamado={chamado} />
       <AssinaturasAtendimento
         chamadoId={chamado.id}
         clienteInicial={assinaturaCliente}
@@ -76,7 +81,14 @@ export default async function DetalheChamado({ params }: { params: Promise<{ id:
       />
       <section className="detail-card">
         <div className="section-heading"><span>05</span><div><h2>RAT</h2><p>Prepare, revise e gere a ordem de serviço em PDF.</p></div></div>
-        <Link className="primary-button" href={`/chamados/${chamado.id}/rat`}><FileText size={17} />Preparar RAT</Link>
+        {ratAtual ? <div className="rat-summary">
+          <div><strong>RAT gerada</strong><span>Versão {ratAtual.versao}</span><span>Gerada em: {formatarDataHora(ratAtual.gerado_em)}</span></div>
+          <RatArquivoAcoes chamadoId={chamado.id} ratId={ratAtual.id} nomeArquivo={nomeArquivoRat(numero, ratAtual.versao)} />
+          <Link className="primary-button" href={`/chamados/${chamado.id}/rat`}><FileText size={17} />Gerar nova versão</Link>
+        </div> : <div className="rat-summary">
+          <p>Nenhuma RAT gerada.</p>
+          <Link className="primary-button" href={`/chamados/${chamado.id}/rat`}><FileText size={17} />Preparar RAT</Link>
+        </div>}
       </section>
       <section className="danger-zone">
         <ExcluirChamado id={chamado.id} numero={numero} />

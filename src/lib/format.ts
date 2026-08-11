@@ -45,6 +45,11 @@ export function formatarDataHora(valor: string) {
   return `${parte("day")}/${parte("month")}/${parte("year")} às ${parte("hour")}:${parte("minute")}`;
 }
 
+export function normalizarHorarioInput(valor: string) {
+  const partes = /^(\d{2}):(\d{2})/.exec(valor || "");
+  return partes ? `${partes[1]}:${partes[2]}` : "";
+}
+
 export function formatarMoeda(valor: string | null) {
   if (valor === null || valor === "") return "";
   return new Intl.NumberFormat("pt-BR", {

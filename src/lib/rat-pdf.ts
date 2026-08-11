@@ -27,7 +27,7 @@ function dataHoraPdf(valor: string) {
   if (!valor) return "";
   const data = new Date(valor);
   if (Number.isNaN(data.getTime())) return valor;
-  return new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" }).format(data).replace(",", " -");
+  return new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(data).replace(",", "");
 }
 
 function preencherTexto(form: PDFForm, indice: number, valor: string, tamanho = 7) {
@@ -118,11 +118,12 @@ export async function gerarRatPdf(dados: RatRevisao, assinaturas: RatAssinaturas
   desenharAssinatura(page, cliente, 88, 38, 170, 29);
   texto(page, font, assinaturas.cliente?.nome || dados.colaborador, 80, 33, 6.3, 35);
   texto(page, font, assinaturas.cliente?.documento || "", 195, 33, 5.2, 22);
-  texto(page, font, dataHoraPdf(assinaturas.cliente?.assinado_em || ""), 218, 425, 6.2, 20);
-  texto(page, font, dataHoraPdf(assinaturas.tecnico?.assinado_em || ""), 218, 375, 6.2, 20);
+  const dataHoraGeracao = dataHoraPdf(assinaturas.gerado_em || "");
+  texto(page, font, dataHoraGeracao, 218, 425, 6.2, 20);
+  texto(page, font, dataHoraGeracao, 218, 375, 6.2, 20);
   texto(page, font, dados.analista_logistica, 330, 375, 6.2, 30);
   texto(page, font, dados.data_hora_logistica, 472, 375, 6.2, 20);
-  texto(page, font, [dataPdf(dados.data_fim), dados.hora_fim].filter(Boolean).join(" - "), 390, 30, 7, 24);
+  texto(page, font, dataHoraGeracao, 390, 30, 7, 24);
 
   pdf.setTitle(`RAT ${dados.chamado || "sem chamado"}`);
   pdf.setSubject("OS - Ordem de Serviço - Field Service");

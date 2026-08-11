@@ -22,11 +22,12 @@ export type RatRevisao = {
 };
 
 export type RatAssinaturas = {
+  gerado_em?: string;
   cliente?: { nome: string; documento: string; assinado_em: string; bytes: Uint8Array };
   tecnico?: { nome: string; assinado_em: string; bytes: Uint8Array };
 };
 
 export type RatRegistro = {
   id: string; chamado_id: number; versao: number; caminho_pdf: string; hash_pdf: string;
-  tecnico: string; status_rat: string; atual: boolean; gerado_em: string;
+  tecnico: string; status_rat: string; atual: boolean; gerado_em: string; dados_revisao: RatRevisao;
 };

@@ -1,14 +1,16 @@
 import { NextResponse } from "next/server";
+import { nomeArquivoRat } from "@/lib/rat-arquivo";
 import { ratService } from "@/lib/server-rat";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string; ratId: string }> }) {
   try {
     const { id, ratId } = await params;
-    const { rat, bytes } = await ratService.baixar(Number(id), ratId);
+    const { rat, chamado, bytes } = await ratService.baixar(Number(id), ratId);
     const download = new URL(request.url).searchParams.get("download") === "1";
+    const nomeArquivo = nomeArquivoRat(chamado.numero_chamado, rat.versao);
     return new NextResponse(Buffer.from(bytes), { headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `${download ? "attachment" : "inline"}; filename="RAT-v${rat.versao}.pdf"`,
+      "Content-Disposition": `${download ? "attachment" : "inline"}; filename="${nomeArquivo}"`,
       "Cache-Control": "private, no-store",
     } });
   } catch (erro) {

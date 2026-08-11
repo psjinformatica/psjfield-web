@@ -19,5 +19,8 @@ describe("mapearChamadoParaRat", () => {
     expect(rat).toMatchObject({ chamado: "MI-100", hora_inicio: "09:15", tipo_equipamento: "Notebook", atual_serial: "S1", localidade: "Rua A - Curitiba/PR" });
     expect(rat.dominio).toBe("");
     expect(rat.diagnosticos).toEqual([]);
+    expect(rat.descricao).toBe("");
+    expect(chamado.atividade).toBe("Troca");
+    expect(chamado.descricao_servico).toBe("Atendimento");
   });
 });

@@ -56,6 +56,17 @@ describe("RatService", () => {
     const c = service(); await c.service.gerarRat(1, revisao); await c.service.gerarRat(1, revisao);
     expect(c.gateway.registros.map((r) => [r.versao, r.atual])).toEqual([[1, false], [2, true]]);
   });
+  it("usa um único instante de geração no PDF e no registro da versão", async () => {
+    const gateway = new Gateway(); const storage = new Storage();
+    let instantePdf = "";
+    const ratService = new RatService(gateway, storage, async (_dados, assinaturas) => {
+      instantePdf = assinaturas.gerado_em || "";
+      return new Uint8Array([1, 2, 3]);
+    }, () => "uuid-fixo", () => new Date("2026-08-11T14:05:00.000Z"));
+    const rat = await ratService.gerarRat(1, revisao);
+    expect(instantePdf).toBe("2026-08-11T14:05:00.000Z");
+    expect(rat.gerado_em).toBe(instantePdf);
+  });
   it("gera nova versão após reabertura sem sobrescrever a RAT anterior", async () => {
     const c = service("Em atendimento");
     c.gateway.registros.push({

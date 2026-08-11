@@ -3,6 +3,8 @@
 import { FileDown, LoaderCircle } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { RatArquivoAcoes } from "@/components/rat-arquivo-acoes";
+import { nomeArquivoRat } from "@/lib/rat-arquivo";
 import { CONDICOES_EQUIPAMENTO, DIAGNOSTICOS, ITENS_AFETADOS, STATUS_EQUIPAMENTO, TIPOS_EQUIPAMENTO, TIPOS_OCORRENCIA, VALIDACOES_FINAIS, type RatRegistro, type RatRevisao } from "@/lib/rat-types";
 
 function Grupo({ titulo, nome, opcoes, selecionados, unico = false }: { titulo: string; nome: string; opcoes: readonly string[]; selecionados: string[]; unico?: boolean }) {
@@ -46,7 +48,7 @@ export function RatForm({ chamadoId, status, inicial, versoes }: { chamadoId: nu
       <div className="review-grid">
         <Campo nome="chamado" rotulo="Chamado" valor={inicial.chamado} /><Campo nome="login" rotulo="Login" valor={inicial.login} />
         <Campo nome="data_inicio" rotulo="Data início" valor={inicial.data_inicio} tipo="date" /><Campo nome="hora_inicio" rotulo="Hora início" valor={inicial.hora_inicio} tipo="time" />
-        <Campo nome="data_fim" rotulo="Data fim" valor={inicial.data_fim} tipo="date" /><Campo nome="hora_fim" rotulo="Hora fim" valor={inicial.hora_fim} tipo="time" />
+        <Campo nome="data_fim" rotulo="Data fim" valor={inicial.data_fim} tipo="date" />
         <Campo nome="colaborador" rotulo="Colaborador" valor={inicial.colaborador} /><Campo nome="telefone" rotulo="Telefone" valor={inicial.telefone} />
         <Campo nome="email" rotulo="E-mail" valor={inicial.email} tipo="email" /><Campo nome="localidade" rotulo="Localidade" valor={inicial.localidade} />
       </div>
@@ -70,6 +72,6 @@ export function RatForm({ chamadoId, status, inicial, versoes }: { chamadoId: nu
       <button className="primary-button" disabled={pendente}>{pendente ? <><LoaderCircle className="spin" size={17} />Gerando...</> : <><FileDown size={17} />Gerar RAT em PDF</>}</button>
     </form>
     {versoes.length > 0 && <section className="detail-card"><div className="section-heading"><span>PDF</span><div><h2>Versões geradas</h2><p>A versão anterior é preservada.</p></div></div><div className="rat-versions">{versoes.map((rat) =>
-      <div key={rat.id}><strong>Versão {rat.versao}{rat.atual ? " · Atual" : ""}</strong><span>{new Date(rat.gerado_em).toLocaleString("pt-BR")}</span><div><a className="secondary-button" target="_blank" href={`/api/chamados/${chamadoId}/rat/${rat.id}/arquivo`}>Visualizar RAT</a><a className="secondary-button" href={`/api/chamados/${chamadoId}/rat/${rat.id}/arquivo?download=1`}>Baixar PDF</a></div></div>)}</div></section>}
+      <div key={rat.id}><strong>Versão {rat.versao}{rat.atual ? " · Atual" : ""}</strong><span>{new Date(rat.gerado_em).toLocaleString("pt-BR")}</span><RatArquivoAcoes chamadoId={chamadoId} ratId={rat.id} nomeArquivo={nomeArquivoRat(inicial.chamado, rat.versao)} /></div>)}</div></section>}
   </>;
 }

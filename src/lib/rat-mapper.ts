@@ -30,7 +30,7 @@ export function mapearChamadoParaRat(
     atual_processador: "", atual_hd: "", atual_hostname: "", atual_memoria: "",
     novo_serial: "", novo_ae: "", novo_fabricante: "", novo_modelo: "", novo_processador: "", novo_hd: "", novo_hostname: "", novo_memoria: "",
     pasta_perfil_pst: "", software: "", itens_afetados: [], memoria_frequencia: "", item_outros: "", part_number: "", centro_custo: "",
-    diagnosticos: [], diagnostico_outros: "", descricao: chamado.descricao_servico || chamado.atividade || "",
+    diagnosticos: [], diagnostico_outros: "", descricao: "",
     status_equipamento: [], condicao_equipamento: "", qualificacao: "", validacoes_finais: [],
     recebido_laboratorio: false, recebido_estoque: false, analista_logistica: "", data_hora_logistica: "",
   };

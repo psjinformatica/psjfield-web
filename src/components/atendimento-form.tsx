@@ -4,6 +4,7 @@ import { type FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { STATUS_FINALIZACAO, statusEncerraAtendimento } from "@/lib/status";
+import { normalizarHorarioInput } from "@/lib/format";
 import type { Chamado } from "@/lib/types";
 
 const MOTIVOS_REABERTURA = [
@@ -19,7 +20,10 @@ export function AtendimentoForm({ chamado }: { chamado: Chamado }) {
   const [estado, setEstado] = useState<{ sucesso?: string; erro?: string }>({});
   const [pendente, setPendente] = useState(false);
   const [statusAtual, setStatusAtual] = useState(chamado.status);
-  const [horaInicioSalva, setHoraInicioSalva] = useState(chamado.hora_inicio || "");
+  const [horaChegada, setHoraChegada] = useState(normalizarHorarioInput(chamado.hora_chegada));
+  const [horaInicio, setHoraInicio] = useState(normalizarHorarioInput(chamado.hora_inicio));
+  const [horaTermino, setHoraTermino] = useState(normalizarHorarioInput(chamado.hora_termino));
+  const [horaInicioSalva, setHoraInicioSalva] = useState(normalizarHorarioInput(chamado.hora_inicio));
   const [statusFinal, setStatusFinal] = useState<(typeof STATUS_FINALIZACAO)[number]>("Concluído");
   const [motivo, setMotivo] = useState("");
   const [mostrarReabertura, setMostrarReabertura] = useState(false);
@@ -31,7 +35,6 @@ export function AtendimentoForm({ chamado }: { chamado: Chamado }) {
     setPendente(true);
     setEstado({});
     const form = new FormData(evento.currentTarget);
-    const horaInicio = String(form.get("hora_inicio") || "");
     const alterouHoraInicio = Boolean(horaInicioSalva && horaInicioSalva !== horaInicio);
     if (alterouHoraInicio && !window.confirm("Confirma a alteração do horário de início já registrado?")) {
       setPendente(false);
@@ -42,9 +45,9 @@ export function AtendimentoForm({ chamado }: { chamado: Chamado }) {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          hora_chegada: form.get("hora_chegada"),
+          hora_chegada: horaChegada,
           hora_inicio: horaInicio,
-          hora_termino: form.get("hora_termino"),
+          hora_termino: horaTermino,
           descricao_servico: form.get("descricao_servico"),
           observacoes_atendimento: form.get("observacoes_atendimento"),
           confirmar_alteracao_hora_inicio: alterouHoraInicio,
@@ -161,9 +164,9 @@ export function AtendimentoForm({ chamado }: { chamado: Chamado }) {
         </>
       )}
       <div className="time-grid">
-        <label>Hora chegada<input name="hora_chegada" type="time" defaultValue={chamado.hora_chegada} /></label>
-        <label>Hora início<input name="hora_inicio" type="time" defaultValue={chamado.hora_inicio} /></label>
-        <label>Hora término<input name="hora_termino" type="time" defaultValue={chamado.hora_termino} /></label>
+        <label>Hora chegada<input name="hora_chegada" type="time" value={horaChegada} onChange={(evento) => setHoraChegada(evento.target.value)} /></label>
+        <label>Hora início<input name="hora_inicio" type="time" value={horaInicio} onChange={(evento) => setHoraInicio(evento.target.value)} /></label>
+        <label>Hora término<input name="hora_termino" type="time" value={horaTermino} onChange={(evento) => setHoraTermino(evento.target.value)} /></label>
       </div>
       <label>Descrição do serviço
         <textarea name="descricao_servico" rows={6} defaultValue={chamado.descricao_servico} placeholder="Descreva o serviço realizado..." />

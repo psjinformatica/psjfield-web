@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatarDataHora, formatarDataRelativa } from "@/lib/format";
+import { formatarDataHora, formatarDataRelativa, normalizarHorarioInput } from "@/lib/format";
 
 describe("formatarDataRelativa", () => {
   const referencia = new Date(2026, 6, 31, 12);
@@ -16,5 +16,11 @@ describe("formatarDataRelativa", () => {
 
   it("formata o horário da importação no fuso de São Paulo", () => {
     expect(formatarDataHora("2026-07-30T17:32:00.000Z")).toBe("30/07/2026 às 14:32");
+  });
+
+  it("adapta horários persistidos pelo PostgreSQL para o input time", () => {
+    expect(normalizarHorarioInput("08:45:00")).toBe("08:45");
+    expect(normalizarHorarioInput("09:10")).toBe("09:10");
+    expect(normalizarHorarioInput("")).toBe("");
   });
 });

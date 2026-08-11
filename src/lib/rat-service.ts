@@ -55,6 +55,7 @@ export class RatService {
     ]);
     const instante = this.agora().toISOString();
     const bytes = await this.gerar(dados, {
+      gerado_em: instante,
       cliente: cliente && clienteBytes ? { nome: cliente.nome_responsavel, documento: cliente.documento_responsavel, assinado_em: cliente.assinado_em, bytes: clienteBytes } : undefined,
       tecnico: tecnico && tecnicoBytes ? { nome: tecnico.nome_tecnico, assinado_em: instante, bytes: tecnicoBytes } : undefined,
     });
@@ -75,8 +76,11 @@ export class RatService {
 
   async baixar(chamadoId: number, ratId: string) {
     this.validarId(chamadoId);
-    const rat = await this.gateway.buscarRat(ratId, chamadoId);
-    if (!rat) throw new Error("RAT não encontrada.");
-    return { rat, bytes: await this.storage.baixarPdf(rat.caminho_pdf) };
+    const [rat, chamado] = await Promise.all([
+      this.gateway.buscarRat(ratId, chamadoId),
+      this.gateway.buscarChamado(chamadoId),
+    ]);
+    if (!rat || !chamado) throw new Error("RAT não encontrada.");
+    return { rat, chamado, bytes: await this.storage.baixarPdf(rat.caminho_pdf) };
   }
 }
