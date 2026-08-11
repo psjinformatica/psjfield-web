@@ -169,8 +169,9 @@ select:focus, input:focus, textarea:focus { border-color: var(--brand-2); box-sh
   .finance-hero { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr) minmax(128px, 47%); }
   .finance-hero h1 { font-size: clamp(1.7rem, 8vw, 2.25rem); }
   .finance-hero .hero-copy { font-size: .76rem; line-height: 1.4; }
-  .finance-total-card { min-height: 116px; min-width: 0; padding: 34px 11px 11px; width: 100%; }
-  .finance-total-card > svg { height: 19px; right: 11px; top: 11px; width: 19px; }
+  .finance-total-card { justify-content: center; min-height: 100px; min-width: 0; padding: 26px 11px 8px; width: 100%; }
+  .finance-total-card > svg { height: 19px; right: 11px; top: 9px; width: 19px; }
+  .finance-total-card > span:last-child { align-self: flex-end; margin-top: 4px; }
   .metric .finance-total-value { font-size: clamp(1.25rem, 6vw, 1.65rem); line-height: 1.05; }
   .filters { grid-template-columns: 1fr; }.card-grid { grid-template-columns: 1fr; }.call-card { min-height: 0; }
   .detail-header { align-items: start; flex-direction: column; gap: 12px; }.detail-card, .form-card, .review-card, .upload-card { border-radius: 15px; padding: 18px; }
@@ -181,20 +182,24 @@ select:focus, input:focus, textarea:focus { border-color: var(--brand-2); box-sh
   .signature-actions { align-items: stretch; flex-direction: column; }.signature-actions button { width: 100%; }
   .reopen-actions { align-items: stretch; flex-direction: column-reverse; }.reopen-actions button { width: 100%; }
   .finance-grid { grid-template-columns: 1fr; }
-  .finance-card { padding: 12px; }
+  .finance-card { padding: 10px 12px; }
   .finance-card-head { align-items: start; gap: 8px; }
   .finance-card-head > div { min-width: 0; }
   .finance-card-head strong { font-size: .95rem; overflow-wrap: anywhere; }
   .finance-status { flex: 0 0 auto; font-size: .62rem; max-width: 48%; padding: 5px 7px; text-align: center; }
-  .finance-card dl { gap: 4px; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.25fr) minmax(0, .72fr) minmax(0, 1.35fr); margin: 12px 0; }
+  .finance-card dl { gap: 4px; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.25fr) minmax(0, .72fr) minmax(0, 1.35fr); margin: 10px 0 8px; }
   .finance-card dl div { min-width: 0; padding: 7px 4px; }
   .finance-card dt { font-size: .55rem; }
   .finance-card dd { font-size: .68rem; line-height: 1.2; overflow-wrap: anywhere; }
   .finance-card dl div:nth-child(-n+3) dd { white-space: nowrap; }
-  .receive-form { gap: 7px; grid-template-columns: repeat(2, minmax(0, 1fr)); padding-top: 12px; }
-  .receive-form input { padding: 9px 7px; }
-  .receive-form button { grid-column: 1 / -1; min-height: 40px; padding: 8px 12px; }
+  .receive-form { column-gap: 7px; grid-template-columns: repeat(2, minmax(0, 1fr)); padding-top: 8px; row-gap: 5px; }
+  .receive-form label { line-height: 1.1; }
+  .receive-form input { box-sizing: border-box; height: 44px; margin-top: 4px; padding: 6px 7px; }
+  .receive-form input[type="date"] { -webkit-min-logical-width: 0; line-height: normal; min-height: 44px; }
+  .receive-form button { grid-column: 1 / -1; min-height: 40px; padding: 6px 12px; }
+  .currency-input { height: 44px; margin-top: 4px; }
   .currency-input > span { padding-left: 7px; }
+  .currency-input input { height: 42px; margin: 0; }
   .quick-facts { gap: 8px; }.data-grid { gap: 14px; }.delete-confirm > div { align-items: stretch; flex-direction: column; }.delete-confirm form button { width: 100%; }
 }
 
