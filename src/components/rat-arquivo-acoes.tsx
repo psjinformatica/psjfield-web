@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, ExternalLink, Share2 } from "lucide-react";
+import { ExternalLink, Share2 } from "lucide-react";
 import { useState } from "react";
 
 type Props = {
@@ -33,7 +33,6 @@ export function RatArquivoAcoes({ chamadoId, ratId, nomeArquivo, visualizarEmRot
 
   return <div className="rat-file-actions">
     <a className="secondary-button" href={visualizacaoUrl} target={visualizarEmRota ? undefined : "_blank"} rel={visualizarEmRota ? undefined : "noreferrer"}><ExternalLink size={16} />Visualizar RAT</a>
-    <a className="secondary-button" href={`${arquivoUrl}?download=1`}><Download size={16} />Baixar RAT</a>
     <button className="secondary-button" type="button" disabled={compartilhando} onClick={compartilhar}>
       <Share2 size={16} />{compartilhando ? "Preparando..." : "Compartilhar RAT"}
     </button>

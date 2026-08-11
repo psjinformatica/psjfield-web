@@ -1,5 +1,11 @@
-const CACHE = "psjfield-shell-v1";
-const SHELL = ["/manifest.webmanifest", "/favicon.ico"];
+const CACHE = "psjfield-shell-v2";
+const SHELL = [
+  "/manifest.webmanifest",
+  "/favicon.ico",
+  "/apple-touch-icon.png",
+  "/icon-192.png",
+  "/icon-512.png",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)).catch(() => undefined));
