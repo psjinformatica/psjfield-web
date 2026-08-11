@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { CalendarDays } from "lucide-react";
 
 import { formatarData, formatarMoeda } from "@/lib/format";
 import type { ContaReceber } from "@/lib/financeiro-types";
@@ -48,6 +49,7 @@ export function FinanceiroLista({ contas }: { contas: ContaReceber[] }) {
           <option value="EM_REVISAO">Em revisão</option><option value="RECEBIDO">Recebido</option>
         </select>
       </label>
+      <p className="finance-order-hint"><CalendarDays aria-hidden="true" size={14} /> Ordenado pela previsão (mais próxima primeiro)</p>
     </div>
     {erro && <p className="feedback error" role="alert">{erro}</p>}
     <div className="finance-grid">
@@ -62,7 +64,7 @@ export function FinanceiroLista({ contas }: { contas: ContaReceber[] }) {
         {conta.revisao_pendente && <p className="finance-review">Revisão pendente</p>}
         {conta.situacao !== "RECEBIDO" && !conta.revisao_pendente && conta.valor_total && <form action={(dados) => receber(conta, dados)} className="receive-form">
           <label>Data recebida<input name="recebido_em" type="date" required /></label>
-          <label>Valor recebido<input defaultValue={conta.valor_total} min="0.01" name="valor_recebido" step="0.01" type="number" required /></label>
+          <label>Valor recebido<span className="currency-input"><span>R$</span><input defaultValue={conta.valor_total} min="0.01" name="valor_recebido" step="0.01" type="number" required /></span></label>
           <button className="primary-button" disabled={pendente === conta.id}>Marcar como recebido</button>
         </form>}
       </article>)}
