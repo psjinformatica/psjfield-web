@@ -14,6 +14,7 @@ import type {
   ReaberturaInput,
 } from "@/lib/types";
 import { horarioAtualSaoPaulo, statusEncerraAtendimento, statusGeraRecebimento } from "@/lib/status";
+import { colocarContaEmRevisao, registrarContaAutomatica } from "@/lib/financeiro-repository";
 
 export async function listarChamados(): Promise<ChamadoResumo[]> {
   const sql = getSql();
@@ -85,11 +86,14 @@ export async function finalizarChamado(
   const sql = getSql();
   return sql.begin(async (transacao) => {
     const atuais = await transacao<{
+      id: number;
+      numero_chamado: string;
       status: string;
+      hora_inicio: string;
       hora_termino: string;
       observacoes_atendimento: string;
     }[]>`
-      SELECT status, hora_termino, observacoes_atendimento
+      SELECT id, numero_chamado, status, hora_inicio, hora_termino, observacoes_atendimento
       FROM chamados WHERE id = ${id} FOR UPDATE
     `;
     const atual = atuais[0];
@@ -103,15 +107,26 @@ export async function finalizarChamado(
           .filter(Boolean)
           .join("\n")
       : atual.observacoes_atendimento;
+    const encerradoEm = new Date().toISOString();
     const linhas = await transacao<{ status: FinalizacaoInput["status"]; hora_termino: string }[]>`
       UPDATE chamados
       SET status = ${dados.status},
           hora_termino = ${horaTermino},
           observacoes_atendimento = ${observacoes},
-          atualizado_em = ${new Date().toISOString()}
+          atualizado_em = ${encerradoEm}
       WHERE id = ${id}
       RETURNING status, hora_termino
     `;
+    if (statusGeraRecebimento(linhas[0].status)) {
+      await registrarContaAutomatica(transacao, {
+        id: Number(atual.id),
+        numero_chamado: atual.numero_chamado,
+        hora_inicio: atual.hora_inicio,
+        hora_termino: linhas[0].hora_termino,
+      }, encerradoEm);
+    } else {
+      await colocarContaEmRevisao(transacao, id);
+    }
     return {
       ...linhas[0],
       gera_recebimento: statusGeraRecebimento(linhas[0].status),
@@ -144,6 +159,7 @@ export async function reabrirChamado(
       UPDATE rats SET atual = FALSE, status_rat = 'Substituída'
       WHERE chamado_id = ${id} AND atual = TRUE
     `;
+    await colocarContaEmRevisao(transacao, id);
     const linhas = await transacao<{ status: "Em atendimento" }[]>`
       UPDATE chamados
       SET status = 'Em atendimento', atualizado_em = ${reabertoEm}
