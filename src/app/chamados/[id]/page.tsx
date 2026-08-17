@@ -8,6 +8,7 @@ import { ExcluirChamado } from "@/components/excluir-chamado";
 import { MarcarChamadoAcessado } from "@/components/marcar-chamado-acessado";
 import { RatArquivoAcoes } from "@/components/rat-arquivo-acoes";
 import { formatarCidade, formatarData, formatarDataHora, formatarMoeda } from "@/lib/format";
+import { observeRequest } from "@/lib/db-observability";
 import { nomeArquivoRat } from "@/lib/rat-arquivo";
 import { ratService } from "@/lib/server-rat";
 import { chamadosService } from "@/lib/server-service";
@@ -24,17 +25,18 @@ export default async function DetalheChamado({ params }: { params: Promise<{ id:
   const { id } = await params;
   const chamadoId = Number(id);
   if (!Number.isSafeInteger(chamadoId)) notFound();
-  const chamado = await chamadosService.buscar(chamadoId);
-  if (!chamado) notFound();
-  const [assinaturaCliente, assinaturaTecnico, rats] = await Promise.all([
-    assinaturasService.buscarCliente(chamadoId),
-    assinaturasService.buscarTecnico(),
-    ratService.listar(chamadoId),
-  ]);
-  const numero = chamado.numero_chamado || `Chamado ${chamado.id}`;
-  const encerrado = statusEncerraAtendimento(chamado.status);
-  const ratAtual = rats.find((rat) => rat.atual) || rats[0];
-  return (
+  return observeRequest(`/chamados/${chamadoId}`, async () => {
+    const chamado = await chamadosService.buscar(chamadoId);
+    if (!chamado) notFound();
+    const [assinaturaCliente, assinaturaTecnico, rats] = await Promise.all([
+      assinaturasService.buscarCliente(chamadoId),
+      assinaturasService.buscarTecnico(),
+      ratService.listar(chamadoId),
+    ]);
+    const numero = chamado.numero_chamado || `Chamado ${chamado.id}`;
+    const encerrado = statusEncerraAtendimento(chamado.status);
+    const ratAtual = rats.find((rat) => rat.atual) || rats[0];
+    return (
     <main className={`page-shell detail-page${encerrado ? " detail-page-closed" : ""}`}>
       <MarcarChamadoAcessado id={chamado.id} />
       <Link className="back-link" href="/"><ArrowLeft size={18} /> Voltar aos chamados</Link>
@@ -94,5 +96,6 @@ export default async function DetalheChamado({ params }: { params: Promise<{ id:
         <ExcluirChamado id={chamado.id} numero={numero} />
       </section>
     </main>
-  );
+    );
+  });
 }

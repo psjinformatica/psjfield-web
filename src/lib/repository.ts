@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getSql } from "@/lib/db";
+import { observeDatabaseOperation } from "@/lib/db-observability";
 import type {
   AtendimentoInput,
   AtendimentoAtualizado,
@@ -17,8 +18,9 @@ import { horarioAtualSaoPaulo, statusEncerraAtendimento, statusGeraRecebimento }
 import { colocarContaEmRevisao, registrarContaAutomatica } from "@/lib/financeiro-repository";
 
 export async function listarChamados(): Promise<ChamadoResumo[]> {
-  const sql = getSql();
-  const linhas = await sql<ChamadoResumo[]>`
+  return observeDatabaseOperation("chamados.listar", async () => {
+    const sql = getSql();
+    const linhas = await sql<ChamadoResumo[]>`
     SELECT id, numero_chamado, status, data_agendada, hora_agendada,
            cliente, projeto, cidade, estado, atividade, valor_base
     FROM chamados
@@ -26,12 +28,14 @@ export async function listarChamados(): Promise<ChamadoResumo[]> {
              NULLIF(hora_agendada, '') DESC NULLS LAST,
              id DESC
   `;
-  return linhas.map((linha) => ({ ...linha, id: Number(linha.id) }));
+    return linhas.map((linha) => ({ ...linha, id: Number(linha.id) }));
+  });
 }
 
 export async function buscarChamado(id: number): Promise<Chamado | null> {
-  const sql = getSql();
-  const linhas = await sql<Chamado[]>`
+  return observeDatabaseOperation("chamados.buscarPorId", async () => {
+    const sql = getSql();
+    const linhas = await sql<Chamado[]>`
     SELECT id, numero_chamado, empresa_parceira, cliente, projeto, assunto_email,
            remetente, destinatario, data_email, data_agendada, hora_agendada,
            usuario_responsavel, contato, telefone, endereco, cidade, estado,
@@ -41,12 +45,14 @@ export async function buscarChamado(id: number): Promise<Chamado | null> {
            descricao_servico, observacoes_atendimento
     FROM chamados WHERE id = ${id}
   `;
-  return linhas[0] ? { ...linhas[0], id: Number(linhas[0].id) } : null;
+    return linhas[0] ? { ...linhas[0], id: Number(linhas[0].id) } : null;
+  });
 }
 
 export async function atualizarAtendimento(id: number, dados: AtendimentoInput): Promise<AtendimentoAtualizado> {
-  const sql = getSql();
-  return sql.begin(async (transacao) => {
+  return observeDatabaseOperation("atendimento.salvar", async () => {
+    const sql = getSql();
+    return sql.begin(async (transacao) => {
     const atuais = await transacao<{ status: string; hora_inicio: string }[]>`
       SELECT status, hora_inicio FROM chamados WHERE id = ${id} FOR UPDATE
     `;
@@ -76,6 +82,7 @@ export async function atualizarAtendimento(id: number, dados: AtendimentoInput):
       RETURNING status, hora_inicio
     `;
     return linhas[0];
+    });
   });
 }
 
@@ -83,8 +90,9 @@ export async function finalizarChamado(
   id: number,
   dados: FinalizacaoInput,
 ): Promise<ChamadoFinalizado> {
-  const sql = getSql();
-  return sql.begin(async (transacao) => {
+  return observeDatabaseOperation("atendimento.finalizar", async () => {
+    const sql = getSql();
+    return sql.begin(async (transacao) => {
     const atuais = await transacao<{
       id: number;
       numero_chamado: string;
@@ -131,6 +139,7 @@ export async function finalizarChamado(
       ...linhas[0],
       gera_recebimento: statusGeraRecebimento(linhas[0].status),
     };
+    });
   });
 }
 
@@ -138,8 +147,9 @@ export async function reabrirChamado(
   id: number,
   dados: ReaberturaInput,
 ): Promise<ChamadoReaberto> {
-  const sql = getSql();
-  return sql.begin(async (transacao) => {
+  return observeDatabaseOperation("atendimento.reabrir", async () => {
+    const sql = getSql();
+    return sql.begin(async (transacao) => {
     const atuais = await transacao<{ status: string }[]>`
       SELECT status FROM chamados WHERE id = ${id} FOR UPDATE
     `;
@@ -167,6 +177,7 @@ export async function reabrirChamado(
       RETURNING status
     `;
     return { status: linhas[0].status, reaberto_em: reabertoEm };
+    });
   });
 }
 

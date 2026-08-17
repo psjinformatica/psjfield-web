@@ -1,11 +1,13 @@
 import { chamadosService } from "@/lib/server-service";
 import { ChamadosLista } from "@/components/chamados-lista";
+import { observeRequest } from "@/lib/db-observability";
 
 export const dynamic = "force-dynamic";
 
 export default async function Dashboard() {
-  const chamados = await chamadosService.listar();
-  return (
+  return observeRequest("/", async () => {
+    const chamados = await chamadosService.listar();
+    return (
     <main className="page-shell">
       <section className="hero">
         <div>
@@ -22,5 +24,6 @@ export default async function Dashboard() {
       </section>
       <ChamadosLista chamados={chamados} />
     </main>
-  );
+    );
+  });
 }

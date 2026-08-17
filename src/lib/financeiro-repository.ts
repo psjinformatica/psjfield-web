@@ -3,6 +3,7 @@ import "server-only";
 import type postgres from "postgres";
 
 import { getSql } from "@/lib/db";
+import { observeDatabaseOperation } from "@/lib/db-observability";
 import { calcularFinanceiro } from "@/lib/financeiro-calculo";
 import { REGRA_PRECO_ATUAL, type ContaReceber } from "@/lib/financeiro-types";
 
@@ -58,8 +59,9 @@ export async function colocarContaEmRevisao(transacao: Transacao, chamadoId: num
 }
 
 export async function listarContasReceber(): Promise<ContaReceber[]> {
-  const sql = getSql();
-  const linhas = await sql<ContaReceber[]>`
+  return observeDatabaseOperation("financeiro.listar", async () => {
+    const sql = getSql();
+    const linhas = await sql<ContaReceber[]>`
     SELECT cr.id, cr.chamado_id, cr.numero_chamado_snapshot AS numero_chamado,
            cr.encerrado_em, cr.hora_inicio_snapshot, cr.hora_fim_snapshot,
            cr.duracao_minutos, cr.horas_adicionais, cr.valor_base,
@@ -83,17 +85,20 @@ export async function listarContasReceber(): Promise<ContaReceber[]> {
              cr.encerrado_em ASC NULLS LAST,
              cr.numero_chamado_snapshot ASC
   `;
-  return linhas.map((linha) => ({ ...linha, chamado_id: Number(linha.chamado_id) }));
+    return linhas.map((linha) => ({ ...linha, chamado_id: Number(linha.chamado_id) }));
+  });
 }
 
 export async function marcarContaRecebida(id: string, valorRecebido: number, recebidoEm: string) {
-  const sql = getSql();
-  const linhas = await sql<ContaReceber[]>`
+  return observeDatabaseOperation("financeiro.marcarRecebida", async () => {
+    const sql = getSql();
+    const linhas = await sql<ContaReceber[]>`
     UPDATE contas_receber
     SET situacao = 'RECEBIDO', recebido_em = ${recebidoEm}, valor_recebido = ${valorRecebido},
         revisao_pendente = FALSE, atualizado_em = NOW()
     WHERE id = ${id} AND situacao <> 'RECEBIDO' AND revisao_pendente = FALSE
     RETURNING id
   `;
-  if (!linhas[0]) throw new Error("Conta não encontrada, já recebida ou pendente de revisão.");
+    if (!linhas[0]) throw new Error("Conta não encontrada, já recebida ou pendente de revisão.");
+  });
 }

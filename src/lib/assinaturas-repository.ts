@@ -2,16 +2,19 @@ import "server-only";
 
 import type { AssinaturaCliente, AssinaturaTecnico } from "@/lib/assinaturas-types";
 import { getSql } from "@/lib/db";
+import { observeDatabaseOperation } from "@/lib/db-observability";
 
 export async function buscarAssinaturaCliente(chamadoId: number) {
-  const sql = getSql();
-  const linhas = await sql<AssinaturaCliente[]>`
+  return observeDatabaseOperation("assinaturas.buscarCliente", async () => {
+    const sql = getSql();
+    const linhas = await sql<AssinaturaCliente[]>`
     SELECT chamado_id, nome_responsavel, documento_responsavel, caminho_assinatura,
            assinado_em, atualizado_em
     FROM assinaturas_cliente
     WHERE chamado_id = ${chamadoId}
   `;
-  return linhas[0] ? { ...linhas[0], chamado_id: Number(linhas[0].chamado_id) } : null;
+    return linhas[0] ? { ...linhas[0], chamado_id: Number(linhas[0].chamado_id) } : null;
+  });
 }
 
 export async function salvarAssinaturaCliente(assinatura: AssinaturaCliente) {
@@ -34,13 +37,15 @@ export async function salvarAssinaturaCliente(assinatura: AssinaturaCliente) {
 }
 
 export async function buscarAssinaturaTecnico() {
-  const sql = getSql();
-  const linhas = await sql<AssinaturaTecnico[]>`
+  return observeDatabaseOperation("assinaturas.buscarTecnico", async () => {
+    const sql = getSql();
+    const linhas = await sql<AssinaturaTecnico[]>`
     SELECT id, nome_tecnico, caminho_assinatura, atualizado_em
     FROM assinatura_tecnico
     WHERE id = 1
   `;
-  return linhas[0] ? { ...linhas[0], id: Number(linhas[0].id) } : null;
+    return linhas[0] ? { ...linhas[0], id: Number(linhas[0].id) } : null;
+  });
 }
 
 export async function salvarAssinaturaTecnico(assinatura: AssinaturaTecnico) {
