@@ -8,6 +8,7 @@ import { ExcluirChamado } from "@/components/excluir-chamado";
 import { MarcarChamadoAcessado } from "@/components/marcar-chamado-acessado";
 import { RatArquivoAcoes } from "@/components/rat-arquivo-acoes";
 import { formatarCidade, formatarData, formatarDataHora, formatarMoeda } from "@/lib/format";
+import { carregarComplementosChamado } from "@/lib/chamado-detalhe";
 import { observeRequest } from "@/lib/db-observability";
 import { nomeArquivoRat } from "@/lib/rat-arquivo";
 import { ratService } from "@/lib/server-rat";
@@ -28,11 +29,11 @@ export default async function DetalheChamado({ params }: { params: Promise<{ id:
   return observeRequest(`/chamados/${chamadoId}`, async () => {
     const chamado = await chamadosService.buscar(chamadoId);
     if (!chamado) notFound();
-    const [assinaturaCliente, assinaturaTecnico, rats] = await Promise.all([
-      assinaturasService.buscarCliente(chamadoId),
-      assinaturasService.buscarTecnico(),
-      ratService.listar(chamadoId),
-    ]);
+    const { assinaturaCliente, assinaturaTecnico, rats } = await carregarComplementosChamado({
+      cliente: () => assinaturasService.buscarCliente(chamadoId),
+      tecnico: () => assinaturasService.buscarTecnico(),
+      rats: () => ratService.listar(chamadoId),
+    });
     const numero = chamado.numero_chamado || `Chamado ${chamado.id}`;
     const encerrado = statusEncerraAtendimento(chamado.status);
     const ratAtual = rats.find((rat) => rat.atual) || rats[0];

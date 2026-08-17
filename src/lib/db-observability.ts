@@ -13,8 +13,28 @@ type DatabaseError = Error & {
 
 type Logger = Pick<Console, "info" | "warn" | "error">;
 
+type ActiveOperation = {
+  operation: string;
+  requestId: string;
+  route: string;
+};
+
 const requestContext = new AsyncLocalStorage<RequestContext>();
-const instanceState = { activeOperations: 0 };
+const instanceState = {
+  instanceId: "unconfigured",
+  operationSequence: 0,
+  activeOperations: new Map<number, ActiveOperation>(),
+};
+
+const transportErrorCodes = new Set([
+  "CONNECT_TIMEOUT",
+  "CONNECTION_CLOSED",
+  "CONNECTION_DESTROYED",
+  "CONNECTION_ENDED",
+  "ECONNRESET",
+  "EPIPE",
+  "ETIMEDOUT",
+]);
 
 function observabilityEnabled() {
   return process.env.DB_OBSERVABILITY === "1";
@@ -22,6 +42,50 @@ function observabilityEnabled() {
 
 export function createRequestId() {
   return randomUUID().replaceAll("-", "").slice(0, 8);
+}
+
+export function createDatabaseInstanceId() {
+  return randomUUID().replaceAll("-", "").slice(0, 6);
+}
+
+export function configureDatabaseObservability(instanceId: string) {
+  instanceState.instanceId = instanceId;
+}
+
+function activeFields(currentRequestId?: string) {
+  const active = [...instanceState.activeOperations.values()];
+  return {
+    active: active.length,
+    active_ops: active.map((item) => item.operation).join(",") || "none",
+    active_contexts: active.map((item) => `${item.requestId}:${item.route}:${item.operation}`).join(",") || "none",
+    other_requests_active: currentRequestId
+      ? new Set(active.filter((item) => item.requestId !== currentRequestId).map((item) => item.requestId)).size
+      : new Set(active.map((item) => item.requestId)).size,
+  };
+}
+
+export function observeDatabaseClientCreated(logger: Logger = console) {
+  if (!observabilityEnabled()) return;
+  logLine(logger, "info", "DB_CLIENT_CREATED", {
+    instance: instanceState.instanceId,
+    max: 1,
+    prepare: false,
+    idle_timeout: 20,
+    connect_timeout: 10,
+    driver_dispatch: "unavailable_without_sensitive_debug",
+    at: new Date().toISOString(),
+  });
+}
+
+export function observeDatabaseConnectionClosed(connectionId: number, logger: Logger = console) {
+  if (!observabilityEnabled()) return;
+  logLine(logger, "warn", "DB_CONNECTION_CLOSED", {
+    instance: instanceState.instanceId,
+    connection: connectionId,
+    reason: "not_exposed_by_public_onclose",
+    ...activeFields(),
+    at: new Date().toISOString(),
+  });
 }
 
 export function classifyDatabaseDuration(durationMs: number) {
@@ -62,19 +126,27 @@ export async function observeDatabaseOperation<T>(
   const now = options.now ?? Date.now;
   const context = requestContext.getStore() ?? { requestId: createRequestId(), route: "unscoped" };
   const requestedAt = now();
-  const activeBefore = instanceState.activeOperations;
-  instanceState.activeOperations += 1;
+  const activeBefore = instanceState.activeOperations.size;
+  const operationId = ++instanceState.operationSequence;
+  instanceState.activeOperations.set(operationId, {
+    operation,
+    requestId: context.requestId,
+    route: context.route,
+  });
   let slowTimer: ReturnType<typeof setTimeout> | undefined;
 
   const scheduleWarning = (delayMs: number, marker: "DB_SLOW" | "DB_VERY_SLOW" | "DB_STALLED", next?: () => void) => {
     slowTimer = setTimeout(() => {
       logLine(logger, "warn", marker, {
+        instance: instanceState.instanceId,
         req: context.requestId,
         route: context.route,
         op: operation,
         duration: `${Math.max(0, now() - requestedAt)}ms`,
         status: "waiting",
         concurrent_at_start: activeBefore,
+        driver_dispatch: "unavailable",
+        ...activeFields(context.requestId),
         at: new Date().toISOString(),
       });
       next?.();
@@ -88,11 +160,14 @@ export async function observeDatabaseOperation<T>(
 
   if (observabilityEnabled()) {
     logLine(logger, "info", "DB_START", {
+      instance: instanceState.instanceId,
       req: context.requestId,
       route: context.route,
       op: operation,
-      active: instanceState.activeOperations,
+      requested_at: new Date().toISOString(),
       queued_estimate: activeBefore,
+      driver_dispatch: "unavailable",
+      ...activeFields(context.requestId),
       at: new Date().toISOString(),
     });
   }
@@ -103,12 +178,16 @@ export async function observeDatabaseOperation<T>(
     const marker = classifyDatabaseDuration(durationMs);
     if (observabilityEnabled() || marker !== "DB") {
       logLine(logger, marker === "DB" ? "info" : "warn", marker, {
+        instance: instanceState.instanceId,
         req: context.requestId,
         route: context.route,
         op: operation,
         duration: `${durationMs}ms`,
         status: "ok",
         concurrent_at_start: activeBefore,
+        driver_dispatch: "unavailable",
+        ...activeFields(context.requestId),
+        completed_at: new Date().toISOString(),
         at: new Date().toISOString(),
       });
     }
@@ -116,7 +195,11 @@ export async function observeDatabaseOperation<T>(
   } catch (error) {
     const durationMs = Math.max(0, now() - requestedAt);
     const databaseError = (error instanceof Error ? error : new Error(String(error))) as DatabaseError;
+    const transportEvent = databaseError.code && transportErrorCodes.has(databaseError.code)
+      ? databaseError.code
+      : undefined;
     logLine(logger, "error", "DB_ERROR", {
+      instance: instanceState.instanceId,
       req: context.requestId,
       route: context.route,
       op: operation,
@@ -125,14 +208,17 @@ export async function observeDatabaseOperation<T>(
       code: databaseError.code,
       severity: databaseError.severity,
       timeout: databaseError.code === "57014" || /statement timeout|lock timeout/i.test(databaseError.message),
+      transport_event: transportEvent,
       message: sanitizeDatabaseMessage(databaseError.message),
       concurrent_at_start: activeBefore,
+      driver_dispatch: "unavailable",
+      ...activeFields(context.requestId),
       at: new Date().toISOString(),
     });
     throw error;
   } finally {
     if (slowTimer) clearTimeout(slowTimer);
-    instanceState.activeOperations = Math.max(0, instanceState.activeOperations - 1);
+    instanceState.activeOperations.delete(operationId);
   }
 }
 
@@ -154,6 +240,7 @@ export async function observeRequest<T>(
       const failed = responseStatus >= 400;
       if (observabilityEnabled() || failed || durationMs > 1_000) {
         logLine(logger, failed ? "error" : durationMs > 1_000 ? "warn" : "info", failed ? "REQUEST_ERROR" : "REQUEST", {
+          instance: instanceState.instanceId,
           req: requestId,
           route,
           duration: `${durationMs}ms`,
@@ -165,6 +252,7 @@ export async function observeRequest<T>(
     } catch (error) {
       const durationMs = Math.max(0, now() - startedAt);
       logLine(logger, "error", "REQUEST_ERROR", {
+        instance: instanceState.instanceId,
         req: requestId,
         route,
         duration: `${durationMs}ms`,

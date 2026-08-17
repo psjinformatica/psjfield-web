@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   classifyDatabaseDuration,
+  configureDatabaseObservability,
+  observeDatabaseConnectionClosed,
   observeDatabaseOperation,
   observeRequest,
   sanitizeDatabaseMessage,
@@ -14,6 +16,8 @@ function logger() {
 afterEach(() => {
   delete process.env.DB_OBSERVABILITY;
 });
+
+configureDatabaseObservability("inst01");
 
 describe("observabilidade do banco", () => {
   it("mantém o retorno de uma operação rápida", async () => {
@@ -33,6 +37,7 @@ describe("observabilidade do banco", () => {
     { requestId: "abc123", logger: log, now });
     const output = [...log.info.mock.calls].flat().join("\n");
     expect(output).toContain("req=abc123");
+    expect(output).toContain("instance=inst01");
     expect(output).toContain("route=/chamados/13");
     expect(output).toContain("duration=35ms");
   });
@@ -59,5 +64,36 @@ describe("observabilidade do banco", () => {
   it("remove DATABASE_URL e quebras de linha da mensagem", () => {
     const result = sanitizeDatabaseMessage("DATABASE_URL=postgresql://user:pass@host/db\nfalhou");
     expect(result).toBe("DATABASE_URL=[REMOVED] falhou");
+  });
+
+  it("lista operações globais e distingue outra requisição", async () => {
+    process.env.DB_OBSERVABILITY = "1";
+    const log = logger();
+    let liberarPrimeira!: () => void;
+    const primeira = new Promise<void>((resolve) => { liberarPrimeira = resolve; });
+    const operacaoA = observeRequest("/chamados/13", () =>
+      observeDatabaseOperation("rats.listarPorChamado", () => primeira, { logger: log }),
+    { requestId: "reqA", logger: log });
+    await Promise.resolve();
+    await observeRequest("/financeiro", () =>
+      observeDatabaseOperation("financeiro.listar", async () => undefined, { logger: log }),
+    { requestId: "reqB", logger: log });
+    liberarPrimeira();
+    await operacaoA;
+    const output = [...log.info.mock.calls].flat().join("\n");
+    expect(output).toContain("active_ops=rats.listarPorChamado,financeiro.listar");
+    expect(output).toContain("active_contexts=reqA:/chamados/13:rats.listarPorChamado,reqB:/financeiro:financeiro.listar");
+    expect(output).toContain("other_requests_active=1");
+  });
+
+  it("registra fechamento público da conexão sem inferir o motivo", () => {
+    process.env.DB_OBSERVABILITY = "1";
+    const log = logger();
+    observeDatabaseConnectionClosed(7, log);
+    const output = [...log.warn.mock.calls].flat().join("\n");
+    expect(output).toContain("[DB_CONNECTION_CLOSED]");
+    expect(output).toContain("instance=inst01");
+    expect(output).toContain("connection=7");
+    expect(output).toContain("reason=not_exposed_by_public_onclose");
   });
 });
