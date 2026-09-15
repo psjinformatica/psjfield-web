@@ -41,12 +41,12 @@ export default async function PrepararRat({
     if (!chamado) notFound();
     const modelo = resolverModeloRat(chamado);
     if (modelo === "dasa-v1") {
-      const [inicialMapeado, versoes] = simulacaoDasa
-        ? [criarSimulacaoRatDasa(), [] as Awaited<ReturnType<typeof ratService.listar>>]
-        : await Promise.all([
-          buscarAssinaturaTecnico().then((tecnico) => mapChamadoParaRatDasa(chamado, { tecnico })),
-          ratService.listar(chamadoId),
-        ]);
+      const inicialMapeado = simulacaoDasa
+        ? criarSimulacaoRatDasa()
+        : mapChamadoParaRatDasa(chamado, { tecnico: await buscarAssinaturaTecnico() });
+      const versoes = simulacaoDasa
+        ? [] as Awaited<ReturnType<typeof ratService.listar>>
+        : await ratService.listar(chamadoId);
       const versoesDasa = versoes.filter((rat) => ratCompativelComModelo(rat, "dasa-v1"));
       const revisaoAnterior = ultimaRevisaoDasaCompativel(versoes);
       const inicial = revisaoAnterior ? {
@@ -83,7 +83,8 @@ export default async function PrepararRat({
         </section>
       </main>;
     }
-    const [cliente, versoes] = await Promise.all([buscarAssinaturaCliente(chamadoId), ratService.listar(chamadoId)]);
+    const cliente = await buscarAssinaturaCliente(chamadoId);
+    const versoes = await ratService.listar(chamadoId);
     const versoesClaro = versoes.filter((rat) => ratCompativelComModelo(rat, "claro-v1"));
     const inicialMapeado = mapearChamadoParaRat(chamado, cliente);
     const revisaoAnterior = ultimaRevisaoClaroCompativel(versoes);

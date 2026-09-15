@@ -32,6 +32,14 @@ vi.mock("@/lib/server-rat", () => ({
 
 import PrepararRat from "@/app/chamados/[id]/rat/page";
 
+function criarOperacaoPendente<T>() {
+  let concluir!: (valor: T) => void;
+  const promise = new Promise<T>((resolve) => {
+    concluir = resolve;
+  });
+  return { promise, concluir };
+}
+
 describe("seleção do formulário de RAT", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -68,6 +76,53 @@ describe("seleção do formulário de RAT", () => {
     expect(html).not.toContain("Preparação da RAT DASA");
     expect(dependencias.buscarCliente).toHaveBeenCalledWith(21);
     expect(dependencias.listarRats).toHaveBeenCalledWith(21);
+  });
+
+  it("executa chamado, técnico e versões DASA estritamente em sequência", async () => {
+    const chamado = criarOperacaoPendente<typeof chamadoSimulacaoRatDasa>();
+    const tecnico = criarOperacaoPendente<typeof tecnicoDasaSeguro>();
+    const versoes = criarOperacaoPendente<RatRegistro[]>();
+    dependencias.buscarChamado.mockReturnValue(chamado.promise);
+    dependencias.buscarTecnico.mockReturnValue(tecnico.promise);
+    dependencias.listarRats.mockReturnValue(versoes.promise);
+
+    const renderizacao = PrepararRat({ params: Promise.resolve({ id: "20" }), searchParams: Promise.resolve({}) });
+    await vi.waitFor(() => expect(dependencias.buscarChamado).toHaveBeenCalledWith(20));
+    expect(dependencias.buscarTecnico).not.toHaveBeenCalled();
+    expect(dependencias.listarRats).not.toHaveBeenCalled();
+
+    chamado.concluir(chamadoSimulacaoRatDasa);
+    await vi.waitFor(() => expect(dependencias.buscarTecnico).toHaveBeenCalledOnce());
+    expect(dependencias.listarRats).not.toHaveBeenCalled();
+
+    tecnico.concluir(tecnicoDasaSeguro);
+    await vi.waitFor(() => expect(dependencias.listarRats).toHaveBeenCalledWith(20));
+    versoes.concluir([]);
+    await renderizacao;
+  });
+
+  it("executa chamado, cliente e versões Claro estritamente em sequência", async () => {
+    const chamadoClaro = { ...chamadoSimulacaoRatDasa, cliente: "Claro" };
+    const chamado = criarOperacaoPendente<typeof chamadoClaro>();
+    const cliente = criarOperacaoPendente<null>();
+    const versoes = criarOperacaoPendente<RatRegistro[]>();
+    dependencias.buscarChamado.mockReturnValue(chamado.promise);
+    dependencias.buscarCliente.mockReturnValue(cliente.promise);
+    dependencias.listarRats.mockReturnValue(versoes.promise);
+
+    const renderizacao = PrepararRat({ params: Promise.resolve({ id: "19" }), searchParams: Promise.resolve({}) });
+    await vi.waitFor(() => expect(dependencias.buscarChamado).toHaveBeenCalledWith(19));
+    expect(dependencias.buscarCliente).not.toHaveBeenCalled();
+    expect(dependencias.listarRats).not.toHaveBeenCalled();
+
+    chamado.concluir(chamadoClaro);
+    await vi.waitFor(() => expect(dependencias.buscarCliente).toHaveBeenCalledWith(19));
+    expect(dependencias.listarRats).not.toHaveBeenCalled();
+
+    cliente.concluir(null);
+    await vi.waitFor(() => expect(dependencias.listarRats).toHaveBeenCalledWith(19));
+    versoes.concluir([]);
+    await renderizacao;
   });
 
   it("reutiliza somente a revisão DASA compatível, nunca a revisão Claro mais recente", async () => {
