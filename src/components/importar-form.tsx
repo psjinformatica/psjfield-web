@@ -9,6 +9,22 @@ import { formatarCidade, formatarDataHora } from "@/lib/format";
 import type { ChamadoDuplicado, PreviaImportacao } from "@/lib/types";
 
 type RespostaPrevia = PreviaImportacao & { duplicado: ChamadoDuplicado | null; erro?: string };
+type RespostaConfirmacao = { id: number; erro?: string };
+
+type RoteadorPosImportacao = {
+  replace: (href: string) => void;
+};
+
+export async function confirmarImportacaoENavegar(
+  form: FormData,
+  solicitar: typeof fetch,
+  router: RoteadorPosImportacao,
+) {
+  const resposta = await solicitar("/api/importar/confirmar", { method: "POST", body: form });
+  const dados = await resposta.json() as RespostaConfirmacao;
+  if (!resposta.ok) throw new Error(dados.erro);
+  router.replace(`/chamados/${dados.id}`);
+}
 
 const campos = [
   ["numero_chamado", "Número do chamado"],
@@ -64,11 +80,7 @@ export function ImportarForm() {
     form.set("arquivo", arquivo);
     form.set("dados", JSON.stringify(previa.chamado));
     try {
-      const resposta = await fetch("/api/importar/confirmar", { method: "POST", body: form });
-      const dados = await resposta.json();
-      if (!resposta.ok) throw new Error(dados.erro);
-      router.push(`/chamados/${dados.id}`);
-      router.refresh();
+      await confirmarImportacaoENavegar(form, fetch, router);
     } catch (falha) {
       setErro(falha instanceof Error ? falha.message : "Não foi possível importar.");
     } finally { setCarregando(false); }
