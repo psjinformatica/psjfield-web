@@ -28,7 +28,6 @@ export function RatForm({ chamadoId, status, inicial, versoes }: { chamadoId: nu
     for (const nome of ["tipos_ocorrencia", "itens_afetados", "diagnosticos", "status_equipamento", "validacoes_finais"] as const) dados[nome] = form.getAll(nome).map(String);
     dados.recebido_laboratorio = form.get("recebido_laboratorio") === "on";
     dados.recebido_estoque = form.get("recebido_estoque") === "on";
-    if (dados.descricao.length > 270 && !window.confirm("A descrição ultrapassa o espaço de três linhas e será limitada no PDF. Deseja continuar?")) return;
     const confirmar = status === "Cancelado" ? window.confirm("O chamado está cancelado. Confirma a geração excepcional da RAT?") : false;
     if (status === "Cancelado" && !confirmar) return;
     setPendente(true); setFeedback({});
@@ -43,7 +42,7 @@ export function RatForm({ chamadoId, status, inicial, versoes }: { chamadoId: nu
   return <>
     <form className="form-card rat-form" onSubmit={gerar}>
       <div className="section-heading"><span>RAT</span><div><h2>Revisão da RAT</h2><p>Confira e complete os campos antes de gerar o PDF.</p></div></div>
-      <p className="rat-warning">Campos vazios permanecerão em branco e nenhuma informação será inferida. Textos que excederem o espaço de uma página serão limitados com aviso antes da geração.</p>
+      <p className="rat-warning">Campos vazios permanecerão em branco e nenhuma informação será inferida. A descrição utiliza as três linhas disponíveis no PDF; conteúdos maiores são rejeitados sem truncamento.</p>
       <Grupo titulo="Tipo de ocorrência" nome="tipos_ocorrencia" opcoes={TIPOS_OCORRENCIA} selecionados={inicial.tipos_ocorrencia} />
       <div className="review-grid">
         <Campo nome="chamado" rotulo="Chamado" valor={inicial.chamado} /><Campo nome="login" rotulo="Login" valor={inicial.login} />

@@ -31,5 +31,7 @@ describe("RatForm Claro", () => {
     expect(html).toContain("Gerar RAT em PDF");
     expect(html).toContain('name="chamado"');
     expect(html).toContain('value="MI-100"');
+    expect(html).toContain("utiliza as três linhas disponíveis");
+    expect(html).not.toContain("serão limitados");
   });
 });

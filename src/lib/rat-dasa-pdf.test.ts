@@ -77,8 +77,8 @@ describe("gerarRatDasaPdf", () => {
     const vazio = await gerarRatDasaPdf(semOpcionais);
     const marcado = await gerarRatDasaPdf(comOpcionais);
     expect(marcado).not.toEqual(vazio);
-    expect(POSICOES_MARCACOES_RAT_DASA.checklist_aplicado.energia).toEqual([64, 327]);
-    expect(POSICOES_MARCACOES_RAT_DASA.equipamento["Ponto de Rede"]).toEqual([352, 178]);
+    expect(POSICOES_MARCACOES_RAT_DASA.checklist_aplicado.energia).toEqual([64, 326.3, 8.4, 8.4]);
+    expect(POSICOES_MARCACOES_RAT_DASA.equipamento["Ponto de Rede"]).toEqual([337.2, 177.6, 8.4, 8.4]);
   });
 
   it("não marca opções false, null ou vazias", () => {
@@ -135,6 +135,51 @@ describe("gerarRatDasaPdf", () => {
     expect(layout).not.toBeNull();
     expect(layout!.linhas.length).toBeGreaterThan(1);
     expect(layout!.tamanho).toBeGreaterThanOrEqual(5.5);
+  });
+
+  it.each([
+    [1, "palavra ".repeat(1)],
+    [2, "palavra ".repeat(20)],
+    [3, "palavra ".repeat(34)],
+  ])("aceita texto DASA ocupando %i linha(s) físicas", async (quantidade, texto) => {
+    const pdf = await PDFDocument.create();
+    const font = await pdf.embedFont(StandardFonts.Helvetica);
+    const layout = calcularLayoutTextoRatDasa(
+      font,
+      texto.trim(),
+      { largura: 509, altura: 37 },
+      { tamanhoMaximo: 9, tamanhoMinimo: 5.5, maximoLinhas: 3, fatorLarguraPreferida: 0.9 },
+    );
+
+    expect(layout?.linhas).toHaveLength(quantidade);
+    expect(layout?.tamanho).toBe(9);
+  });
+
+  it("aceita o máximo DASA reduzindo a fonte somente após usar três linhas", async () => {
+    const pdf = await PDFDocument.create();
+    const font = await pdf.embedFont(StandardFonts.Helvetica);
+    const opcoes = { tamanhoMaximo: 9, tamanhoMinimo: 5.5, maximoLinhas: 3, fatorLarguraPreferida: 0.9 };
+    const maximo = calcularLayoutTextoRatDasa(font, "palavra ".repeat(70).trim(), { largura: 509, altura: 37 }, opcoes);
+    const excesso = calcularLayoutTextoRatDasa(font, "palavra ".repeat(100).trim(), { largura: 509, altura: 37 }, opcoes);
+
+    expect(maximo?.linhas).toHaveLength(3);
+    expect(maximo?.tamanho).toBeLessThan(9);
+    expect(excesso).toBeNull();
+  });
+
+  it("quebra Solução Aplicada antecipadamente para preservar legibilidade", async () => {
+    const pdf = await PDFDocument.create();
+    const font = await pdf.embedFont(StandardFonts.Helvetica);
+    const texto = "Solução aplicada com validação completa de conectividade e testes finais acompanhados pelo responsável local";
+    const layout = calcularLayoutTextoRatDasa(
+      font,
+      texto,
+      { largura: 509, altura: 50 },
+      { tamanhoMaximo: 9, tamanhoMinimo: 5.5, maximoLinhas: 4, fatorLarguraPreferida: 0.78 },
+    );
+
+    expect(layout?.linhas.length).toBeGreaterThan(1);
+    expect(layout?.tamanho).toBe(9);
   });
 
   it("retorna erro identificando o campo quando texto obrigatório não cabe", async () => {

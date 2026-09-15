@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { PDFDocument, PDFName, StandardFonts, rgb, type PDFForm, type PDFImage, type PDFPage, type PDFFont } from "pdf-lib";
 
+import { calcularLayoutTextoPdf } from "@/lib/pdf-text-layout";
 import type { RatAssinaturas, RatRevisao } from "@/lib/rat-types";
 
 export const CAMINHO_TEMPLATE_RAT_CLARO = path.join(process.cwd(), "Documentacao", "Modelos", "RAT_Claro_Modelo.pdf");
@@ -13,6 +14,39 @@ const RADIO = "Bot#C3#A3o de op#C3#A7#C3#A3o 1";
 const ocorrencias = ["Instalação", "Substituição", "Devolução", "Formatação", "Empréstimo", "Manutenção", "Laudo"];
 const equipamentos = ["Notebook", "Desktop", "Monitor", "Outro"];
 const statusEquipamento = ["Equipamento OK", "Desgaste Natural", "Fora de Garantia"];
+const caixaDescricao = { x: 81, topo: 623.6, largura: 474.5, altura: 23.84 };
+
+export class RatClaroPdfOverflowError extends Error {
+  constructor() {
+    super("O campo descrição excede as três linhas disponíveis no PDF da RAT Claro.");
+    this.name = "RatClaroPdfOverflowError";
+  }
+}
+
+export function calcularLayoutDescricaoRatClaro(font: PDFFont, valor: string) {
+  return calcularLayoutTextoPdf(font, valor, caixaDescricao, {
+    tamanhoInicial: 6.2,
+    tamanhoMinimo: 4.5,
+    maximoLinhas: 3,
+    entrelinha: 1.12,
+    fatorLarguraPreferida: 0.92,
+  });
+}
+
+function desenharDescricao(page: PDFPage, font: PDFFont, valor: string) {
+  if (!valor) return;
+  const layout = calcularLayoutDescricaoRatClaro(font, valor);
+  if (!layout) throw new RatClaroPdfOverflowError();
+  layout.linhas.forEach((linha, indice) => {
+    page.drawText(linha, {
+      x: caixaDescricao.x,
+      y: page.getHeight() - caixaDescricao.topo - layout.tamanho - indice * layout.tamanho * layout.entrelinha,
+      size: layout.tamanho,
+      font,
+      color: rgb(0.05, 0.05, 0.05),
+    });
+  });
+}
 
 function nome(base: string, indice: number) {
   return indice === 1 ? base : `${base}_${indice}`;
@@ -90,8 +124,7 @@ function preencherCampos(form: PDFForm, dados: RatRevisao) {
   preencherTexto(form, 32, dados.diagnostico_outros, 6.5);
   const descricao = form.getTextField(nome(TEXT, 33));
   descricao.enableMultiline();
-  descricao.setText(dados.descricao.slice(0, 420));
-  descricao.setFontSize(dados.descricao.length > 300 ? 4.5 : dados.descricao.length > 180 ? 5.2 : 6.2);
+  descricao.setText("");
   marcarGrupo(form, Object.fromEntries(statusEquipamento.map((item, i) => [item, i + 31])), dados.status_equipamento);
   const condicao = form.getRadioGroup(RADIO); if (dados.condicao_equipamento === "Disponível para o uso") condicao.select("1"); else if (dados.condicao_equipamento === "Inoperante") condicao.select("2"); else condicao.clear();
   const qualificacao = form.getDropdown("Caixa de lista 1_2"); qualificacao.setFontSize(5.2); if (dados.qualificacao) { const valor = ` ${dados.qualificacao}`; if (!qualificacao.getOptions().includes(valor)) qualificacao.addOptions([valor]); qualificacao.select(valor); } else qualificacao.clear();
@@ -110,6 +143,7 @@ export async function gerarRatPdf(dados: RatRevisao, assinaturas: RatAssinaturas
   form.flatten({ updateFieldAppearances: false });
   page.node.delete(PDFName.of("Annots"));
   pdf.catalog.delete(PDFName.of("AcroForm"));
+  desenharDescricao(page, font, dados.descricao);
 
   const cliente = await imagemPng(pdf, assinaturas.cliente?.bytes);
   const tecnico = await imagemPng(pdf, assinaturas.tecnico?.bytes);

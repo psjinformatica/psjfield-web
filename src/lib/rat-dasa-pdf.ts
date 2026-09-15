@@ -18,11 +18,18 @@ import type {
   TipoEquipamentoDasa,
 } from "@/lib/rat-dasa-types";
 import { validarRatDasaV1ParaGeracao } from "@/lib/rat-dasa-validation";
+import { calcularLayoutTextoPdf } from "@/lib/pdf-text-layout";
 
 export const CAMINHO_TEMPLATE_RAT_DASA = path.join(process.cwd(), "Documentacao", "Modelos", "RAT_DASA_Modelo.pdf");
 
 type Caixa = { x: number; topo: number; largura: number; altura: number };
-type OpcoesTexto = { tamanhoMaximo?: number; tamanhoMinimo?: number; entrelinha?: number };
+type OpcoesTexto = {
+  tamanhoMaximo?: number;
+  tamanhoMinimo?: number;
+  entrelinha?: number;
+  maximoLinhas?: number;
+  fatorLarguraPreferida?: number;
+};
 
 export type AssinaturasPdfDasa = {
   cliente?: Uint8Array;
@@ -68,78 +75,46 @@ const caixas = {
 
 export const POSICOES_MARCACOES_RAT_DASA = {
   atendimento: {
-    FIELD_SERVICES: [63, 165], REMOTE_HANDS: [63, 178], RDM: [140, 165], PROJETO: [140, 178],
+    FIELD_SERVICES: [59.4, 164.4, 9.8, 9.8], REMOTE_HANDS: [59.4, 176.9, 9.8, 9.8],
+    RDM: [131.4, 164.9, 9.8, 10.1], PROJETO: [131.4, 177.4, 9.8, 9.8],
   },
   equipamento: {
-    Desktop: [242, 165], Monitor: [294, 165], Etiquetadora: [352, 165], SRX: [425, 165], Outro: [470, 165],
-    Notebook: [242, 178], Impressora: [294, 178], "Ponto de Rede": [352, 178], Servidor: [425, 178],
+    Desktop: [239.6, 164.4, 8.4, 8.2], Monitor: [286.6, 164.6, 8.4, 8.2],
+    Etiquetadora: [337.2, 164.6, 8.4, 8.2], SRX: [400.3, 164.6, 8.4, 8.2],
+    Outro: [442.3, 164.6, 8.4, 8.2], Notebook: [239.6, 177.6, 8.4, 8.4],
+    Impressora: [287.3, 177.6, 8.4, 8.4], "Ponto de Rede": [337.2, 177.6, 8.4, 8.4],
+    Servidor: [401, 176.6, 8.4, 8.4],
   },
   checklist_aplicado: {
-    energia: [64, 327], rede_rj45: [208, 327], limpeza_temporarios: [315, 327], problema_reincidente: [438, 327],
-    cabo_video: [64, 340], system_center: [208, 340], ativacao_windows_office: [315, 340],
-    demais_perifericos: [64, 353], antivirus: [208, 353], hostname_correto: [315, 353],
+    energia: [64, 326.3, 8.4, 8.4], rede_rj45: [206.7, 326.3, 8.4, 8.4],
+    limpeza_temporarios: [313.7, 326.3, 8.4, 8.4], problema_reincidente: [436.5, 326.3, 8.2, 8.4],
+    cabo_video: [64, 339.2, 8.4, 8.4], system_center: [206.7, 339.2, 8.4, 8.4],
+    ativacao_windows_office: [313.7, 339.2, 8.4, 8.4], demais_perifericos: [64, 352.2, 8.4, 8.4],
+    antivirus: [206.7, 352.2, 8.4, 8.4], hostname_correto: [313.7, 352.2, 8.4, 8.4],
   },
   checklist_formatacao_antes: {
-    print_impressoras_instaladas: [104, 376], print_programas_instalados: [104, 387],
-    print_pastas_email_copia_psts: [104, 397], print_area_trabalho: [104, 407], copia_perfil_usuario: [104, 417],
+    print_impressoras_instaladas: [101.9, 378.3, 8.4, 8.4], print_programas_instalados: [101.9, 388.9, 8.4, 8.4],
+    print_pastas_email_copia_psts: [101.9, 399.5, 8.4, 8.4], print_area_trabalho: [102.1, 409.3, 8.4, 8.4],
+    copia_perfil_usuario: [102.1, 419.9, 8.4, 8.4],
   },
   checklist_formatacao_depois: {
-    impressoras_instaladas_testadas: [323, 376], programas_instalados_testados: [323, 386],
-    pastas_email_psts_restauradas_email_ok: [323, 396], area_trabalho_restaurada: [323, 406],
-    perfil_usuario_restaurado: [323, 416], testes_usuario_validados: [323, 426],
+    impressoras_instaladas_testadas: [321.6, 378.3, 8.4, 8.4], programas_instalados_testados: [321.4, 388.4, 8.4, 8.4],
+    pastas_email_psts_restauradas_email_ok: [321.4, 398.5, 8.4, 8.4], area_trabalho_restaurada: [321.6, 408.1, 8.4, 8.4],
+    perfil_usuario_restaurado: [321.6, 417.9, 8.4, 8.4], testes_usuario_validados: [321.4, 427.8, 8.4, 7.2],
   },
   respostas: {
-    problema_solucionado: [64, 524], garantia_acionada: [161, 524], retirado_laboratorio: [240, 524],
-    retirada_estoque_ti: [340, 524], visita_improdutiva: [446, 524], laudado: [101, 562],
+    problema_solucionado: [64, 523.6, 8.4, 8.2], garantia_acionada: [159.4, 523.6, 8.2, 8.2],
+    retirado_laboratorio: [238.9, 523.6, 8.4, 8.2], retirada_estoque_ti: [338.9, 523.6, 8.4, 8.2],
+    visita_improdutiva: [445.8, 523.6, 8.4, 8.2], laudado: [100.9, 562, 8.4, 8.4],
   },
   motivo_laudo: {
-    COM_DEFEITO: [217, 562], MAU_USO: [270, 562], OBSOLETO: [313, 562], DESCARTE: [356, 562],
+    COM_DEFEITO: [215.3, 562.5, 8.4, 8.4], MAU_USO: [269.8, 562.5, 8.4, 8.4],
+    OBSOLETO: [313.2, 562.5, 8.4, 8.4], DESCARTE: [355.7, 562.5, 8.4, 8.4],
   },
-  avaliacao: { BOM: [285, 699], REGULAR: [328, 699], RUIM: [380, 699] },
+  avaliacao: {
+    BOM: [284.9, 698.1, 8.4, 8.4], REGULAR: [328.1, 698.8, 8.4, 8.4], RUIM: [379.7, 698.8, 8.4, 8.4],
+  },
 } as const;
-
-function quebrarPalavra(font: PDFFont, palavra: string, tamanho: number, largura: number) {
-  const partes: string[] = [];
-  let parte = "";
-  for (const caractere of palavra) {
-    const candidata = parte + caractere;
-    if (parte && font.widthOfTextAtSize(candidata, tamanho) > largura) {
-      partes.push(parte);
-      parte = caractere;
-    } else {
-      parte = candidata;
-    }
-  }
-  if (parte) partes.push(parte);
-  return partes;
-}
-
-function quebrarTexto(font: PDFFont, valor: string, tamanho: number, largura: number) {
-  const linhas: string[] = [];
-  for (const paragrafo of valor.replace(/\r\n?/g, "\n").split("\n")) {
-    if (!paragrafo.trim()) {
-      linhas.push("");
-      continue;
-    }
-    let atual = "";
-    for (const palavraOriginal of paragrafo.trim().split(/\s+/)) {
-      const palavras = font.widthOfTextAtSize(palavraOriginal, tamanho) > largura
-        ? quebrarPalavra(font, palavraOriginal, tamanho, largura)
-        : [palavraOriginal];
-      for (const palavra of palavras) {
-        const candidata = atual ? `${atual} ${palavra}` : palavra;
-        if (atual && font.widthOfTextAtSize(candidata, tamanho) > largura) {
-          linhas.push(atual);
-          atual = palavra;
-        } else {
-          atual = candidata;
-        }
-      }
-    }
-    if (atual) linhas.push(atual);
-  }
-  return linhas;
-}
 
 export function calcularLayoutTextoRatDasa(
   font: PDFFont,
@@ -147,14 +122,13 @@ export function calcularLayoutTextoRatDasa(
   caixa: Pick<Caixa, "largura" | "altura">,
   opcoes: OpcoesTexto = {},
 ) {
-  const maximo = opcoes.tamanhoMaximo ?? 8;
-  const minimo = opcoes.tamanhoMinimo ?? 5.5;
-  const entrelinha = opcoes.entrelinha ?? 1.18;
-  for (let tamanho = maximo; tamanho >= minimo; tamanho -= 0.5) {
-    const linhas = quebrarTexto(font, valor, tamanho, caixa.largura);
-    if (linhas.length * tamanho * entrelinha <= caixa.altura) return { linhas, tamanho, entrelinha };
-  }
-  return null;
+  return calcularLayoutTextoPdf(font, valor, caixa, {
+    tamanhoInicial: opcoes.tamanhoMaximo ?? 8,
+    tamanhoMinimo: opcoes.tamanhoMinimo ?? 5.5,
+    entrelinha: opcoes.entrelinha,
+    maximoLinhas: opcoes.maximoLinhas ?? Number.MAX_SAFE_INTEGER,
+    fatorLarguraPreferida: opcoes.fatorLarguraPreferida,
+  });
 }
 
 function desenharTexto(
@@ -174,30 +148,31 @@ function desenharTexto(
   });
 }
 
-function marcar(page: PDFPage, posicao?: readonly [number, number]) {
+export type PosicaoMarcacaoRatDasa = readonly [number, number, number, number];
+
+export function desenharMarcacaoRatDasa(page: PDFPage, posicao?: PosicaoMarcacaoRatDasa) {
   if (!posicao) return;
-  const [x, topo] = posicao;
-  const tamanhoQuadrado = 8;
-  const margem = 1.75;
-  const y = page.getHeight() - topo - tamanhoQuadrado;
+  const [x, topo, largura, altura] = posicao;
+  const margem = Math.min(largura, altura) * 0.23;
+  const y = page.getHeight() - topo - altura;
   page.drawLine({
     start: { x: x + margem, y: y + margem },
-    end: { x: x + tamanhoQuadrado - margem, y: y + tamanhoQuadrado - margem },
+    end: { x: x + largura - margem, y: y + altura - margem },
     thickness: 0.9,
     color: rgb(0, 0, 0),
   });
   page.drawLine({
-    start: { x: x + margem, y: y + tamanhoQuadrado - margem },
-    end: { x: x + tamanhoQuadrado - margem, y: y + margem },
+    start: { x: x + margem, y: y + altura - margem },
+    end: { x: x + largura - margem, y: y + margem },
     thickness: 0.9,
     color: rgb(0, 0, 0),
   });
 }
 
 function adicionarSelecionados<T extends Record<string, boolean>>(
-  destino: Array<readonly [number, number]>,
+  destino: PosicaoMarcacaoRatDasa[],
   valores: T,
-  posicoes: Partial<Record<keyof T, readonly [number, number]>>,
+  posicoes: Partial<Record<keyof T, PosicaoMarcacaoRatDasa>>,
 ) {
   Object.entries(valores).forEach(([chave, ativo]) => {
     const posicao = posicoes[chave as keyof T];
@@ -251,11 +226,11 @@ function preencherTextos(page: PDFPage, font: PDFFont, dados: RatDasaSnapshotV1)
   desenharTexto(page, font, "service tag/serial", dados.equipamento.service_tag_serial, caixas.service_tag_serial);
   desenharTexto(page, font, "marca do equipamento", dados.equipamento.marca, caixas.marca_equipamento);
   desenharTexto(page, font, "modelo", dados.equipamento.modelo, caixas.modelo_equipamento);
-  desenharTexto(page, font, "defeito informado", dados.atendimento.defeito_informado, caixas.defeito_informado, { tamanhoMaximo: 9, tamanhoMinimo: 5.5 });
-  desenharTexto(page, font, "defeito constatado", dados.atendimento.defeito_constatado, caixas.defeito_constatado, { tamanhoMaximo: 9, tamanhoMinimo: 5.5 });
-  desenharTexto(page, font, "observações do defeito", dados.atendimento.observacoes_defeito, caixas.observacoes_defeito, { tamanhoMaximo: 7 });
-  desenharTexto(page, font, "solução aplicada", dados.atendimento.solucao_aplicada, caixas.solucao_aplicada, { tamanhoMaximo: 9, tamanhoMinimo: 5.5 });
-  desenharTexto(page, font, "observações da solução", dados.atendimento.observacoes_solucao, caixas.observacoes_solucao, { tamanhoMaximo: 7 });
+  desenharTexto(page, font, "defeito informado", dados.atendimento.defeito_informado, caixas.defeito_informado, { tamanhoMaximo: 9, tamanhoMinimo: 5.5, maximoLinhas: 3, fatorLarguraPreferida: 0.9 });
+  desenharTexto(page, font, "defeito constatado", dados.atendimento.defeito_constatado, caixas.defeito_constatado, { tamanhoMaximo: 9, tamanhoMinimo: 5.5, maximoLinhas: 3, fatorLarguraPreferida: 0.9 });
+  desenharTexto(page, font, "observações do defeito", dados.atendimento.observacoes_defeito, caixas.observacoes_defeito, { tamanhoMaximo: 7, maximoLinhas: 1 });
+  desenharTexto(page, font, "solução aplicada", dados.atendimento.solucao_aplicada, caixas.solucao_aplicada, { tamanhoMaximo: 9, tamanhoMinimo: 5.5, maximoLinhas: 4, fatorLarguraPreferida: 0.78 });
+  desenharTexto(page, font, "observações da solução", dados.atendimento.observacoes_solucao, caixas.observacoes_solucao, { tamanhoMaximo: 7, maximoLinhas: 1 });
   desenharTexto(page, font, "encaminhamento", dados.atendimento.encaminhado_para, caixas.encaminhado_para, { tamanhoMaximo: 7 });
   desenharTexto(page, font, "centro de custo", dados.laudo.centro_custo, caixas.centro_custo, { tamanhoMaximo: 7 });
   desenharTexto(page, font, "nome do colaborador acompanhante", dados.cliente.nome_colaborador_acompanhante, caixas.colaborador_acompanhante, { tamanhoMaximo: 10, tamanhoMinimo: 6 });
@@ -270,16 +245,16 @@ function preencherTextos(page: PDFPage, font: PDFFont, dados: RatDasaSnapshotV1)
 }
 
 function adicionarOpcao<T extends string>(
-  destino: Array<readonly [number, number]>,
+  destino: PosicaoMarcacaoRatDasa[],
   valor: T | "",
-  posicoes: Partial<Record<T, readonly [number, number]>>,
+  posicoes: Partial<Record<T, PosicaoMarcacaoRatDasa>>,
 ) {
   const posicao = valor ? posicoes[valor] : undefined;
   if (posicao) destino.push(posicao);
 }
 
 export function listarMarcacoesRatDasa(dados: RatDasaSnapshotV1) {
-  const marcacoes: Array<readonly [number, number]> = [];
+  const marcacoes: PosicaoMarcacaoRatDasa[] = [];
   adicionarOpcao<TipoAtendimentoDasa>(marcacoes, dados.atendimento.tipo, POSICOES_MARCACOES_RAT_DASA.atendimento);
   adicionarOpcao<TipoEquipamentoDasa>(marcacoes, dados.equipamento.tipo, POSICOES_MARCACOES_RAT_DASA.equipamento);
   adicionarSelecionados(marcacoes, dados.atendimento.checklist_aplicado, POSICOES_MARCACOES_RAT_DASA.checklist_aplicado);
@@ -298,17 +273,17 @@ export function listarMarcacoesRatDasa(dados: RatDasaSnapshotV1) {
 
 function preencherMarcacoes(page: PDFPage, dados: RatDasaSnapshotV1) {
   if (dados.atendimento.visita_improdutiva === true) {
-    const [x, topo] = POSICOES_MARCACOES_RAT_DASA.respostas.visita_improdutiva;
+    const [x, topo, largura, altura] = POSICOES_MARCACOES_RAT_DASA.respostas.visita_improdutiva;
     page.drawRectangle({
       x,
-      y: page.getHeight() - topo - 8,
-      width: 8,
-      height: 8,
+      y: page.getHeight() - topo - altura,
+      width: largura,
+      height: altura,
       borderWidth: 0.5,
       borderColor: rgb(0, 0, 0),
     });
   }
-  listarMarcacoesRatDasa(dados).forEach((posicao) => marcar(page, posicao));
+  listarMarcacoesRatDasa(dados).forEach((posicao) => desenharMarcacaoRatDasa(page, posicao));
 }
 
 export async function gerarRatDasaPdf(entrada: unknown, assinaturas: AssinaturasPdfDasa = {}) {
