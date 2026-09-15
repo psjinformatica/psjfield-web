@@ -23,6 +23,8 @@ import { calcularLayoutTextoPdf } from "@/lib/pdf-text-layout";
 export const CAMINHO_TEMPLATE_RAT_DASA = path.join(process.cwd(), "Documentacao", "Modelos", "RAT_DASA_Modelo.pdf");
 
 type Caixa = { x: number; topo: number; largura: number; altura: number };
+type PosicoesData = { dia: number; mes: number; ano: number };
+type PosicoesHora = { hora: number; minuto: number };
 type OpcoesTexto = {
   tamanhoMaximo?: number;
   tamanhoMinimo?: number;
@@ -74,6 +76,13 @@ const caixas = {
   termino_data: { x: 374, topo: 789.5, largura: 75, altura: 18 },
   termino_hora: { x: 470, topo: 789.5, largura: 73, altura: 18 },
 } satisfies Record<string, Caixa>;
+
+export const POSICOES_COMPONENTES_DATA_HORA_RAT_DASA = {
+  inicio_data: { dia: 72, mes: 90, ano: 117 },
+  inicio_hora: { hora: 176, minuto: 194 },
+  termino_data: { dia: 378, mes: 397, ano: 424 },
+  termino_hora: { hora: 481, minuto: 504 },
+} as const;
 
 export const POSICOES_MARCACOES_RAT_DASA = {
   atendimento: {
@@ -233,6 +242,52 @@ export function formatarDataRatDasaPdf(valor: string) {
   return partes ? `${partes[3]}/${partes[2]}/${partes[1].slice(-2)}` : valor;
 }
 
+export function decomporDataRatDasaPdf(valor: string) {
+  const partes = /^(\d{2})\/(\d{2})\/(\d{2})$/.exec(valor);
+  if (!partes) throw new Error("Data inválida para renderização no PDF DASA.");
+  return { dia: partes[1], mes: partes[2], ano: partes[3] };
+}
+
+export function decomporHoraRatDasaPdf(valor: string) {
+  const partes = /^(\d{2}):(\d{2})$/.exec(valor);
+  if (!partes) throw new Error("Hora inválida para renderização no PDF DASA.");
+  return { hora: partes[1], minuto: partes[2] };
+}
+
+export function componentesDataRatDasaPdf(valor: string, posicoes: PosicoesData) {
+  const partes = decomporDataRatDasaPdf(valor);
+  return [
+    { valor: partes.dia, x: posicoes.dia },
+    { valor: partes.mes, x: posicoes.mes },
+    { valor: partes.ano, x: posicoes.ano },
+  ];
+}
+
+export function componentesHoraRatDasaPdf(valor: string, posicoes: PosicoesHora) {
+  const partes = decomporHoraRatDasaPdf(valor);
+  return [
+    { valor: partes.hora, x: posicoes.hora },
+    { valor: partes.minuto, x: posicoes.minuto },
+  ];
+}
+
+function desenharComponentesDataHora(
+  page: PDFPage,
+  font: PDFFont,
+  campo: string,
+  componentes: Array<{ valor: string; x: number }>,
+  caixa: Caixa,
+) {
+  componentes.forEach(({ valor, x }) => desenharTexto(
+    page,
+    font,
+    campo,
+    valor,
+    { ...caixa, x, largura: 14 },
+    { tamanhoMaximo: 9, tamanhoMinimo: 9, maximoLinhas: 1 },
+  ));
+}
+
 function preencherTextos(page: PDFPage, font: PDFFont, dados: RatDasaSnapshotV1) {
   desenharTexto(page, font, "unidade/nome", dados.local.unidade_nome, caixas.unidade_nome);
   desenharTexto(page, font, "marca da unidade", dados.local.marca, caixas.marca_unidade);
@@ -257,10 +312,22 @@ function preencherTextos(page: PDFPage, font: PDFFont, dados: RatDasaSnapshotV1)
   desenharTexto(page, font, "centro de custo", dados.laudo.centro_custo, caixas.centro_custo, { tamanhoMaximo: 7 });
   desenharTexto(page, font, "nome do colaborador acompanhante", dados.cliente.nome_colaborador_acompanhante, caixas.colaborador_acompanhante, { tamanhoMaximo: 10, tamanhoMinimo: 6 });
   desenharTexto(page, font, "nome do técnico", dados.tecnico.nome_tecnico, caixas.tecnico_nome, { tamanhoMaximo: 10, tamanhoMinimo: 6 });
-  desenharTexto(page, font, "data de início", formatarDataRatDasaPdf(dados.tecnico.inicio_data), caixas.inicio_data, { tamanhoMaximo: 9 });
-  desenharTexto(page, font, "hora de início", dados.tecnico.inicio_hora, caixas.inicio_hora, { tamanhoMaximo: 9 });
-  desenharTexto(page, font, "data de término", formatarDataRatDasaPdf(dados.tecnico.termino_data), caixas.termino_data, { tamanhoMaximo: 9 });
-  desenharTexto(page, font, "hora de término", dados.tecnico.termino_hora, caixas.termino_hora, { tamanhoMaximo: 9 });
+  desenharComponentesDataHora(page, font, "data de início", componentesDataRatDasaPdf(
+    formatarDataRatDasaPdf(dados.tecnico.inicio_data),
+    POSICOES_COMPONENTES_DATA_HORA_RAT_DASA.inicio_data,
+  ), caixas.inicio_data);
+  desenharComponentesDataHora(page, font, "hora de início", componentesHoraRatDasaPdf(
+    dados.tecnico.inicio_hora,
+    POSICOES_COMPONENTES_DATA_HORA_RAT_DASA.inicio_hora,
+  ), caixas.inicio_hora);
+  desenharComponentesDataHora(page, font, "data de término", componentesDataRatDasaPdf(
+    formatarDataRatDasaPdf(dados.tecnico.termino_data),
+    POSICOES_COMPONENTES_DATA_HORA_RAT_DASA.termino_data,
+  ), caixas.termino_data);
+  desenharComponentesDataHora(page, font, "hora de término", componentesHoraRatDasaPdf(
+    dados.tecnico.termino_hora,
+    POSICOES_COMPONENTES_DATA_HORA_RAT_DASA.termino_hora,
+  ), caixas.termino_hora);
   if (dados.equipamento.tipo === "Outro") {
     desenharTexto(page, font, "outro tipo de equipamento", dados.equipamento.tipo_outro, { x: 480, topo: 165, largura: 88, altura: 13 }, { tamanhoMaximo: 6.5, tamanhoMinimo: 5 });
   }

@@ -5,9 +5,14 @@ import { describe, expect, it } from "vitest";
 
 import {
   CAMINHO_TEMPLATE_RAT_DASA,
+  POSICOES_COMPONENTES_DATA_HORA_RAT_DASA,
   POSICOES_MARCACOES_RAT_DASA,
   RatDasaPdfOverflowError,
   calcularLayoutTextoRatDasa,
+  componentesDataRatDasaPdf,
+  componentesHoraRatDasaPdf,
+  decomporDataRatDasaPdf,
+  decomporHoraRatDasaPdf,
   desenharAssinaturaOuNomeRatDasa,
   formatarDataRatDasaPdf,
   gerarRatDasaPdf,
@@ -171,6 +176,40 @@ describe("gerarRatDasaPdf", () => {
     expect(formatarDataRatDasaPdf(dados.tecnico.inicio_data)).toBe("15/09/26");
     expect(dados.tecnico.inicio_hora).toBe("09:00");
     expect(dados.tecnico.termino_hora).toBe("12:40");
+  });
+
+  it.each([
+    ["01/01/26", { dia: "01", mes: "01", ano: "26" }],
+    ["15/09/26", { dia: "15", mes: "09", ano: "26" }],
+    ["31/12/26", { dia: "31", mes: "12", ano: "26" }],
+  ])("decompõe a data %s sem incluir as barras impressas", (valor, esperado) => {
+    expect(decomporDataRatDasaPdf(valor)).toEqual(esperado);
+    const componentes = componentesDataRatDasaPdf(valor, POSICOES_COMPONENTES_DATA_HORA_RAT_DASA.inicio_data);
+    expect(componentes.map((item) => item.valor)).toEqual([esperado.dia, esperado.mes, esperado.ano]);
+    expect(componentes.every((item) => !item.valor.includes("/"))).toBe(true);
+    expect(new Set(componentes.map((item) => item.x)).size).toBe(3);
+  });
+
+  it.each([
+    ["00:00", { hora: "00", minuto: "00" }],
+    ["09:05", { hora: "09", minuto: "05" }],
+    ["12:20", { hora: "12", minuto: "20" }],
+    ["23:59", { hora: "23", minuto: "59" }],
+  ])("decompõe a hora %s sem incluir os dois-pontos impressos", (valor, esperado) => {
+    expect(decomporHoraRatDasaPdf(valor)).toEqual(esperado);
+    const componentes = componentesHoraRatDasaPdf(valor, POSICOES_COMPONENTES_DATA_HORA_RAT_DASA.inicio_hora);
+    expect(componentes.map((item) => item.valor)).toEqual([esperado.hora, esperado.minuto]);
+    expect(componentes.every((item) => !item.valor.includes(":"))).toBe(true);
+    expect(new Set(componentes.map((item) => item.x)).size).toBe(2);
+  });
+
+  it("usa posições horizontais independentes sem alterar a altura aprovada", () => {
+    expect(POSICOES_COMPONENTES_DATA_HORA_RAT_DASA).toEqual({
+      inicio_data: { dia: 72, mes: 90, ano: 117 },
+      inicio_hora: { hora: 176, minuto: 194 },
+      termino_data: { dia: 378, mes: 397, ano: 424 },
+      termino_hora: { hora: 481, minuto: 504 },
+    });
   });
 
   it("quebra texto longo em várias linhas dentro da caixa", async () => {
