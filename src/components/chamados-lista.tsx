@@ -14,6 +14,7 @@ import {
 import { formatarCidade, formatarDataRelativa, formatarMoeda } from "@/lib/format";
 import type { ChamadoResumo } from "@/lib/types";
 import { STATUS_OPERACIONAIS } from "@/lib/status";
+import { filtrarChamados } from "@/lib/chamados-filter";
 
 const statusDisponiveis = ["Todos", ...STATUS_OPERACIONAIS];
 
@@ -23,20 +24,10 @@ export function ChamadosLista({ chamados }: { chamados: ChamadoResumo[] }) {
   const acessados = idsAcessados(
     useSyncExternalStore(assinarAcessados, snapshotAcessados, snapshotServidor),
   );
-  const filtrados = useMemo(() => {
-    const termo = busca.trim().toLocaleLowerCase("pt-BR");
-    return chamados.filter((chamado) => {
-      const correspondeStatus = status === "Todos" || chamado.status === status;
-      const alvo = [
-        chamado.numero_chamado,
-        chamado.cliente,
-        chamado.projeto,
-        chamado.cidade,
-        chamado.atividade,
-      ].join(" ").toLocaleLowerCase("pt-BR");
-      return correspondeStatus && (!termo || alvo.includes(termo));
-    });
-  }, [busca, chamados, status]);
+  const filtrados = useMemo(
+    () => filtrarChamados(chamados, busca, status),
+    [busca, chamados, status],
+  );
 
   return (
     <section aria-labelledby="lista-titulo">

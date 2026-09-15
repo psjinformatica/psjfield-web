@@ -16,19 +16,47 @@ import type {
 } from "@/lib/types";
 import { horarioAtualSaoPaulo, statusEncerraAtendimento, statusGeraRecebimento } from "@/lib/status";
 import { colocarContaEmRevisao, registrarContaAutomatica } from "@/lib/financeiro-repository";
+import { ordenarChamados, type ChamadoOrdenavel } from "@/lib/chamados-order";
 
 export async function listarChamados(): Promise<ChamadoResumo[]> {
   return observeDatabaseOperation("chamados.listar", async () => {
     const sql = getSql();
-    const linhas = await sql<ChamadoResumo[]>`
-    SELECT id, numero_chamado, status, data_agendada, hora_agendada,
-           cliente, projeto, cidade, estado, atividade, valor_base
-    FROM chamados
-    ORDER BY NULLIF(data_agendada, '') DESC NULLS LAST,
-             NULLIF(hora_agendada, '') DESC NULLS LAST,
-             id DESC
+    const linhas = await sql<ChamadoOrdenavel[]>`
+    SELECT c.id, c.numero_chamado, c.status, c.data_agendada, c.hora_agendada,
+           c.cliente, c.projeto, c.cidade, c.estado, c.atividade, c.valor_base,
+           cr.encerrado_em, c.atualizado_em
+    FROM chamados c
+    LEFT JOIN contas_receber cr ON cr.chamado_id = c.id
+    ORDER BY CASE
+               WHEN c.status = 'Agendado' THEN 0
+               WHEN c.status IN ('Concluído', 'Improdutivo') THEN 1
+               ELSE 2
+             END ASC,
+             CASE
+               WHEN c.status = 'Agendado'
+                AND c.data_agendada ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+                AND TO_CHAR(TO_DATE(c.data_agendada, 'YYYY-MM-DD'), 'YYYY-MM-DD') = c.data_agendada
+               THEN TO_DATE(c.data_agendada, 'YYYY-MM-DD')
+             END ASC NULLS LAST,
+             CASE
+               WHEN c.status = 'Agendado'
+                AND c.hora_agendada ~ '^([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$'
+               THEN c.hora_agendada::time
+             END ASC NULLS LAST,
+             CASE WHEN c.status IN ('Concluído', 'Improdutivo')
+               THEN cr.encerrado_em
+             END DESC NULLS LAST,
+             CASE WHEN c.status NOT IN ('Agendado', 'Concluído', 'Improdutivo')
+               THEN c.atualizado_em
+             END DESC NULLS LAST,
+             c.id DESC
   `;
-    return linhas.map((linha) => ({ ...linha, id: Number(linha.id) }));
+    return ordenarChamados(linhas).map((linha) => {
+      const { encerrado_em, atualizado_em, ...resumo } = linha;
+      void encerrado_em;
+      void atualizado_em;
+      return { ...resumo, id: Number(resumo.id) };
+    });
   });
 }
 
