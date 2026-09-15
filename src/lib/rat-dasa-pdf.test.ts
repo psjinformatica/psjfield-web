@@ -8,6 +8,7 @@ import {
   POSICOES_MARCACOES_RAT_DASA,
   RatDasaPdfOverflowError,
   calcularLayoutTextoRatDasa,
+  desenharAssinaturaOuNomeRatDasa,
   formatarDataRatDasaPdf,
   gerarRatDasaPdf,
   listarMarcacoesRatDasa,
@@ -42,6 +43,56 @@ describe("gerarRatDasaPdf", () => {
     dados.tecnico.assinatura_tecnico = null;
 
     await expect(gerarRatDasaPdf(dados)).resolves.toBeInstanceOf(Uint8Array);
+  });
+
+  it("repete o nome do colaborador no campo de assinatura quando não há imagem", async () => {
+    const pdf = await PDFDocument.create();
+    const page = pdf.addPage();
+    const font = await pdf.embedFont(StandardFonts.Helvetica);
+
+    expect(desenharAssinaturaOuNomeRatDasa(
+      page, font, null, "Colaborador Exemplo",
+      { x: 323, topo: 660, largura: 222, altura: 23 },
+      { x: 323, topo: 665, largura: 222, altura: 16 },
+    )).toBe("texto");
+  });
+
+  it("usa a imagem do colaborador sem repetir o nome no campo de assinatura", async () => {
+    const pdf = await PDFDocument.create();
+    const page = pdf.addPage();
+    const font = await pdf.embedFont(StandardFonts.Helvetica);
+    const imagem = await pdf.embedPng(png);
+
+    expect(desenharAssinaturaOuNomeRatDasa(
+      page, font, imagem, "Colaborador Exemplo",
+      { x: 323, topo: 660, largura: 222, altura: 23 },
+      { x: 323, topo: 665, largura: 222, altura: 16 },
+    )).toBe("imagem");
+  });
+
+  it("repete o nome do técnico no campo de assinatura quando não há imagem", async () => {
+    const pdf = await PDFDocument.create();
+    const page = pdf.addPage();
+    const font = await pdf.embedFont(StandardFonts.Helvetica);
+
+    expect(desenharAssinaturaOuNomeRatDasa(
+      page, font, null, "Técnico Exemplo",
+      { x: 323, topo: 748, largura: 222, altura: 22 },
+      { x: 323, topo: 752, largura: 222, altura: 17 },
+    )).toBe("texto");
+  });
+
+  it("usa a imagem do técnico sem repetir o nome no campo de assinatura", async () => {
+    const pdf = await PDFDocument.create();
+    const page = pdf.addPage();
+    const font = await pdf.embedFont(StandardFonts.Helvetica);
+    const imagem = await pdf.embedPng(png);
+
+    expect(desenharAssinaturaOuNomeRatDasa(
+      page, font, imagem, "Técnico Exemplo",
+      { x: 323, topo: 748, largura: 222, altura: 22 },
+      { x: 323, topo: 752, largura: 222, altura: 17 },
+    )).toBe("imagem");
   });
 
   it("gera prévia com metadados válidos da assinatura técnica existente", async () => {

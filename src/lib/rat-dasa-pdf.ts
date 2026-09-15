@@ -66,11 +66,13 @@ const caixas = {
   encaminhado_para: { x: 151, topo: 536, largura: 135, altura: 12 },
   centro_custo: { x: 494, topo: 562, largura: 76, altura: 13 },
   colaborador_acompanhante: { x: 78, topo: 665, largura: 198, altura: 16 },
+  assinatura_cliente_texto: { x: 323, topo: 665, largura: 222, altura: 16 },
   tecnico_nome: { x: 78, topo: 752, largura: 198, altura: 17 },
-  inicio_data: { x: 72, topo: 794, largura: 75, altura: 18 },
-  inicio_hora: { x: 166, topo: 794, largura: 73, altura: 18 },
-  termino_data: { x: 374, topo: 794, largura: 75, altura: 18 },
-  termino_hora: { x: 470, topo: 794, largura: 73, altura: 18 },
+  assinatura_tecnico_texto: { x: 323, topo: 752, largura: 222, altura: 17 },
+  inicio_data: { x: 72, topo: 789.5, largura: 75, altura: 18 },
+  inicio_hora: { x: 166, topo: 789.5, largura: 73, altura: 18 },
+  termino_data: { x: 374, topo: 789.5, largura: 75, altura: 18 },
+  termino_hora: { x: 470, topo: 789.5, largura: 73, altura: 18 },
 } satisfies Record<string, Caixa>;
 
 export const POSICOES_MARCACOES_RAT_DASA = {
@@ -206,6 +208,26 @@ function desenharAssinatura(page: PDFPage, imagem: PDFImage | null, caixa: Caixa
   });
 }
 
+export function desenharAssinaturaOuNomeRatDasa(
+  page: PDFPage,
+  font: PDFFont,
+  imagem: PDFImage | null,
+  nome: string,
+  caixaImagem: Caixa,
+  caixaTexto: Caixa,
+) {
+  if (imagem) {
+    desenharAssinatura(page, imagem, caixaImagem);
+    return "imagem" as const;
+  }
+  desenharTexto(page, font, "identificação no campo de assinatura", nome, caixaTexto, {
+    tamanhoMaximo: 9,
+    tamanhoMinimo: 6,
+    maximoLinhas: 1,
+  });
+  return "texto" as const;
+}
+
 export function formatarDataRatDasaPdf(valor: string) {
   const partes = /^(\d{4})-(\d{2})-(\d{2})$/.exec(valor);
   return partes ? `${partes[3]}/${partes[2]}/${partes[1].slice(-2)}` : valor;
@@ -299,8 +321,22 @@ export async function gerarRatDasaPdf(entrada: unknown, assinaturas: Assinaturas
     incorporarAssinatura(pdf, assinaturas.cliente, "assinatura do colaborador"),
     incorporarAssinatura(pdf, assinaturas.tecnico, "assinatura do técnico"),
   ]);
-  desenharAssinatura(page, assinaturaCliente, { x: 323, topo: 660, largura: 222, altura: 23 });
-  desenharAssinatura(page, assinaturaTecnico, { x: 323, topo: 748, largura: 222, altura: 22 });
+  desenharAssinaturaOuNomeRatDasa(
+    page,
+    font,
+    assinaturaCliente,
+    dados.cliente.nome_colaborador_acompanhante,
+    { x: 323, topo: 660, largura: 222, altura: 23 },
+    caixas.assinatura_cliente_texto,
+  );
+  desenharAssinaturaOuNomeRatDasa(
+    page,
+    font,
+    assinaturaTecnico,
+    dados.tecnico.nome_tecnico,
+    { x: 323, topo: 748, largura: 222, altura: 22 },
+    caixas.assinatura_tecnico_texto,
+  );
 
   pdf.setTitle(`RAT DASA ${dados.equipamento.chamado_moebius}`);
   pdf.setSubject("Ordem de Serviço DASA - Field Service");
