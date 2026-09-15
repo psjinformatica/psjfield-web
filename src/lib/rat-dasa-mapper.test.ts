@@ -100,6 +100,24 @@ describe("mapChamadoParaRatDasa", () => {
     }).tecnico.nome_tecnico).toBe("Outro Técnico Configurado");
   });
 
+  it("normaliza registrada_em Date da assinatura técnica para ISO serializável", () => {
+    const dados = mapChamadoParaRatDasa(chamadoDasaSeguro, {
+      tecnico: { ...tecnicoDasaSeguro, atualizado_em: new Date("2026-09-15T15:40:00.000Z") },
+    });
+
+    expect(dados.tecnico.assinatura_tecnico?.registrada_em).toBe("2026-09-15T15:40:00.000Z");
+  });
+
+  it("preserva registrada_em já normalizada e representa assinatura ausente como null", () => {
+    expect(mapChamadoParaRatDasa(chamadoDasaSeguro, {
+      tecnico: tecnicoDasaSeguro,
+    }).tecnico.assinatura_tecnico?.registrada_em).toBe(tecnicoDasaSeguro.atualizado_em);
+    expect(mapChamadoParaRatDasa(chamadoDasaSeguro, { tecnico: null }).tecnico.assinatura_tecnico).toBeNull();
+    expect(mapChamadoParaRatDasa(chamadoDasaSeguro, {
+      tecnico: { ...tecnicoDasaSeguro, caminho_assinatura: "" },
+    }).tecnico.assinatura_tecnico).toBeNull();
+  });
+
   it("usa descrição como fallback do defeito informado quando atividade está vazia", () => {
     const dados = mapChamadoParaRatDasa({ ...chamadoDasaSeguro, atividade: "", descricao: "Defeito descrito no acionamento" });
 

@@ -41,7 +41,13 @@ const checklistFormatacaoDepoisSchema = z.object({
 
 const assinaturaReferenciaSchema = z.object({
   caminho: texto.min(1, "Informe a referência da assinatura."),
-  registrada_em: texto.min(1, "Informe quando a assinatura foi registrada."),
+  registrada_em: texto.min(1, "Informe quando a assinatura foi registrada.").refine((valor) => {
+    try {
+      return new Date(valor).toISOString() === valor;
+    } catch {
+      return false;
+    }
+  }, "A data registrada da assinatura é tecnicamente inválida."),
 });
 
 export const ratDasaSnapshotV1Schema = z.object({
@@ -181,19 +187,32 @@ const ROTULOS_CAMPOS_DASA: Record<string, string> = {
 };
 
 export type PendenciaRatDasa = { campo: string; mensagem: string };
+export type ErroTecnicoRatDasa = { caminho: string; mensagem: string };
 
-export function listarPendenciasRatDasaV1(entrada: unknown): PendenciaRatDasa[] {
+export function analisarValidacaoRatDasaV1(entrada: unknown): {
+  pendencias: PendenciaRatDasa[];
+  errosTecnicos: ErroTecnicoRatDasa[];
+} {
   const resultado = ratDasaFormularioV1Schema.safeParse(entrada);
-  if (resultado.success) return [];
+  if (resultado.success) return { pendencias: [], errosTecnicos: [] };
   const pendencias = new Map<string, PendenciaRatDasa>();
+  const errosTecnicos = new Map<string, ErroTecnicoRatDasa>();
   resultado.error.issues.forEach((questao) => {
     const caminho = questao.path.join(".");
-    if (!pendencias.has(caminho)) {
-      pendencias.set(caminho, {
-        campo: ROTULOS_CAMPOS_DASA[caminho] || caminho || "Formulário",
-        mensagem: questao.message,
-      });
+    const rotulo = ROTULOS_CAMPOS_DASA[caminho];
+    if (rotulo) {
+      if (!pendencias.has(caminho)) {
+        pendencias.set(caminho, { campo: rotulo, mensagem: questao.message });
+      }
+      return;
+    }
+    if (!errosTecnicos.has(caminho)) {
+      errosTecnicos.set(caminho, { caminho: caminho || "formulario", mensagem: questao.message });
     }
   });
-  return [...pendencias.values()];
+  return { pendencias: [...pendencias.values()], errosTecnicos: [...errosTecnicos.values()] };
+}
+
+export function listarPendenciasRatDasaV1(entrada: unknown): PendenciaRatDasa[] {
+  return analisarValidacaoRatDasaV1(entrada).pendencias;
 }

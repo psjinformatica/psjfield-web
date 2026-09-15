@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 
 import type { AssinaturaCliente, AssinaturaTecnico } from "@/lib/assinaturas-types";
 import { CAMINHO_TEMPLATE_RAT_DASA, gerarRatDasaPdf } from "@/lib/rat-dasa-pdf";
+import { normalizarInstanteAssinaturaRatDasa } from "@/lib/rat-dasa-mapper";
 import type { RatDasaSnapshotV1 } from "@/lib/rat-dasa-types";
 import { validarRatDasaV1ParaGeracao } from "@/lib/rat-dasa-validation";
 import type { ModeloRat } from "@/lib/rat-models";
@@ -110,10 +111,16 @@ export function criarHandlersRat(dependencias: DependenciasHandlersRat = {}): Re
       const dados = validarRatDasaV1ParaGeracao(entrada);
       const referenciaCliente = dados.cliente.assinatura_cliente;
       const referenciaTecnico = dados.tecnico.assinatura_tecnico;
+      const registradaCliente = referenciaCliente
+        ? normalizarInstanteAssinaturaRatDasa(referenciaCliente.registrada_em)
+        : null;
+      const registradaTecnico = referenciaTecnico
+        ? normalizarInstanteAssinaturaRatDasa(referenciaTecnico.registrada_em)
+        : null;
       if (referenciaCliente && (
         !cliente
         || cliente.caminho_assinatura !== referenciaCliente.caminho
-        || cliente.assinado_em !== referenciaCliente.registrada_em
+        || normalizarInstanteAssinaturaRatDasa(cliente.assinado_em) !== registradaCliente
         || cliente.nome_responsavel.trim() !== dados.cliente.nome_colaborador_acompanhante.trim()
       )) {
         throw new Error("A referência da assinatura do colaborador não corresponde ao chamado.");
@@ -121,7 +128,7 @@ export function criarHandlersRat(dependencias: DependenciasHandlersRat = {}): Re
       if (referenciaTecnico && (
         !tecnico
         || tecnico.caminho_assinatura !== referenciaTecnico.caminho
-        || tecnico.atualizado_em !== referenciaTecnico.registrada_em
+        || normalizarInstanteAssinaturaRatDasa(tecnico.atualizado_em) !== registradaTecnico
         || tecnico.nome_tecnico.trim() !== dados.tecnico.nome_tecnico.trim()
       )) {
         throw new Error("A referência da assinatura do técnico não corresponde à configuração atual.");
@@ -134,13 +141,13 @@ export function criarHandlersRat(dependencias: DependenciasHandlersRat = {}): Re
       if (referenciaCliente && clienteBytes) assinaturasSnapshot.cliente = snapshotAssinatura(
         dados.cliente.nome_colaborador_acompanhante,
         referenciaCliente.caminho,
-        referenciaCliente.registrada_em,
+        registradaCliente!,
         clienteBytes,
       );
       if (referenciaTecnico && tecnicoBytes) assinaturasSnapshot.tecnico = snapshotAssinatura(
         dados.tecnico.nome_tecnico,
         referenciaTecnico.caminho,
-        referenciaTecnico.registrada_em,
+        registradaTecnico!,
         tecnicoBytes,
       );
       return {

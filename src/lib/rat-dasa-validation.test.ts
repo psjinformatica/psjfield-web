@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  analisarValidacaoRatDasaV1,
   listarPendenciasRatDasaV1,
   ratDasaFormularioV1Schema,
   validarAssinaturasRatDasaV1,
@@ -122,6 +123,18 @@ describe("validação dos campos do formulário DASA", () => {
       { campo: "Colaborador que acompanhou o atendimento", mensagem: "Informe o nome do colaborador acompanhante." },
       { campo: "Data de término", mensagem: "Informe a data de término." },
     ]);
+  });
+
+  it("não conta inconsistência técnica de schema como informação faltante", () => {
+    const dados = criarRatDasaValida();
+    (dados.tecnico.assinatura_tecnico as unknown as { registrada_em: Date }).registrada_em = new Date();
+
+    const resultado = analisarValidacaoRatDasaV1(dados);
+    expect(resultado.pendencias).toEqual([]);
+    expect(resultado.errosTecnicos).toEqual([
+      expect.objectContaining({ caminho: "tecnico.assinatura_tecnico.registrada_em" }),
+    ]);
+    expect(listarPendenciasRatDasaV1(dados)).toEqual([]);
   });
 });
 

@@ -13,7 +13,7 @@ import {
   TIPOS_EQUIPAMENTO_DASA,
   type RatDasaSnapshotV1,
 } from "@/lib/rat-dasa-types";
-import { listarPendenciasRatDasaV1, type PendenciaRatDasa } from "@/lib/rat-dasa-validation";
+import { analisarValidacaoRatDasaV1, type PendenciaRatDasa } from "@/lib/rat-dasa-validation";
 import type { RatRegistro } from "@/lib/rat-types";
 
 const ROTULOS_ATENDIMENTO = {
@@ -151,11 +151,16 @@ export function RatDasaForm({ chamadoId, inicial, persistenciaLocal = false, ver
 
   async function gerar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
-    const faltantes = listarPendenciasRatDasaV1(dados);
-    setPendencias(faltantes);
+    const validacao = analisarValidacaoRatDasaV1(dados);
+    setPendencias(validacao.pendencias);
     setErro("");
     setSucesso("");
-    if (faltantes.length > 0) return;
+    if (validacao.errosTecnicos.length > 0) {
+      console.error("[RAT_DASA_SCHEMA_INVALID]", validacao.errosTecnicos);
+      setErro("Não foi possível validar os dados técnicos da RAT. Recarregue a página e tente novamente.");
+      return;
+    }
+    if (validacao.pendencias.length > 0) return;
     setPendente(true);
     try {
       const resposta = await fetch(

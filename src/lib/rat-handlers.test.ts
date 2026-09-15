@@ -38,4 +38,33 @@ describe("handlers de modelos RAT", () => {
     expect(resultado.identidade).toEqual({ modelo_rat: "dasa", modelo_versao: 1, schema_versao: 1 });
     expect(resultado.assinaturasSnapshot).toEqual({});
   });
+
+  it("compara em ISO datas Date vindas do repository para ambas as assinaturas DASA", async () => {
+    const dados = criarRatDasaValida();
+    const carregarAssinatura = vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3]));
+    const handlers = criarHandlersRat({ gerarDasa: async () => new Uint8Array([2]) });
+    const resultado = await handlers["dasa-v1"].preparar({
+      ...contexto,
+      entrada: dados,
+      cliente: {
+        chamado_id: 20,
+        nome_responsavel: dados.cliente.nome_colaborador_acompanhante,
+        documento_responsavel: "",
+        caminho_assinatura: dados.cliente.assinatura_cliente!.caminho,
+        assinado_em: new Date(dados.cliente.assinatura_cliente!.registrada_em) as unknown as string,
+        atualizado_em: new Date(dados.cliente.assinatura_cliente!.registrada_em) as unknown as string,
+      },
+      tecnico: {
+        id: 1,
+        nome_tecnico: dados.tecnico.nome_tecnico,
+        caminho_assinatura: dados.tecnico.assinatura_tecnico!.caminho,
+        atualizado_em: new Date(dados.tecnico.assinatura_tecnico!.registrada_em) as unknown as string,
+      },
+      carregarAssinatura,
+    });
+
+    expect(carregarAssinatura).toHaveBeenCalledTimes(2);
+    expect(resultado.assinaturasSnapshot.cliente?.registrada_em).toBe("2026-09-15T15:40:00.000Z");
+    expect(resultado.assinaturasSnapshot.tecnico?.registrada_em).toBe("2026-09-15T15:40:00.000Z");
+  });
 });

@@ -3,6 +3,7 @@ import type {
   ChecklistAplicadoDasa,
   ChecklistFormatacaoAntesDasa,
   ChecklistFormatacaoDepoisDasa,
+  RatDasaAssinaturaReferencia,
   RatDasaSnapshotV1,
   TipoAtendimentoDasa,
 } from "@/lib/rat-dasa-types";
@@ -38,8 +39,32 @@ const checklistFormatacaoDepoisVazio = (): ChecklistFormatacaoDepoisDasa => ({
   testes_usuario_validados: false,
 });
 
+type AssinaturaTecnicoFonteDasa = Omit<AssinaturaTecnico, "atualizado_em"> & {
+  atualizado_em: string | Date;
+};
+
+export function normalizarInstanteAssinaturaRatDasa(valor: string | Date): string {
+  const instante = valor instanceof Date ? valor : new Date(valor);
+  if (Number.isNaN(instante.getTime())) {
+    throw new Error("Metadados da assinatura DASA possuem data inválida.");
+  }
+  return instante.toISOString();
+}
+
+export function mapearReferenciaAssinaturaRatDasa(
+  caminho: string,
+  registradaEm: string | Date,
+): RatDasaAssinaturaReferencia | null {
+  const caminhoNormalizado = caminho.trim();
+  if (!caminhoNormalizado) return null;
+  return {
+    caminho: caminhoNormalizado,
+    registrada_em: normalizarInstanteAssinaturaRatDasa(registradaEm),
+  };
+}
+
 export type OpcoesMapeamentoRatDasa = {
-  tecnico?: AssinaturaTecnico | null;
+  tecnico?: AssinaturaTecnicoFonteDasa | null;
   tipoAtendimentoSugerido?: TipoAtendimentoDasa;
 };
 
@@ -105,10 +130,9 @@ export function mapChamadoParaRatDasa(
     },
     tecnico: {
       nome_tecnico: tecnico?.nome_tecnico || "",
-      assinatura_tecnico: tecnico ? {
-        caminho: tecnico.caminho_assinatura,
-        registrada_em: tecnico.atualizado_em,
-      } : null,
+      assinatura_tecnico: tecnico
+        ? mapearReferenciaAssinaturaRatDasa(tecnico.caminho_assinatura, tecnico.atualizado_em)
+        : null,
       inicio_data: "",
       inicio_hora: chamado.hora_inicio || "",
       termino_data: "",

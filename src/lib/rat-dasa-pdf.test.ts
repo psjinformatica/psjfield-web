@@ -44,6 +44,16 @@ describe("gerarRatDasaPdf", () => {
     await expect(gerarRatDasaPdf(dados)).resolves.toBeInstanceOf(Uint8Array);
   });
 
+  it("gera prévia com metadados válidos da assinatura técnica existente", async () => {
+    const dados = criarRatDasaValida();
+
+    expect(dados.tecnico.assinatura_tecnico).toEqual({
+      caminho: "tecnico/assinatura-teste.png",
+      registrada_em: "2026-09-15T15:40:00.000Z",
+    });
+    await expect(gerarRatDasaPdf(dados, { tecnico: png })).resolves.toBeInstanceOf(Uint8Array);
+  });
+
   it.each([
     ["cliente", { cliente: png }],
     ["técnico", { tecnico: png }],
