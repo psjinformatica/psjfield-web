@@ -46,6 +46,17 @@ pnpm test
 pnpm build
 ```
 
+## Histórico de migrations em produção
+
+- `20260915190000_rats_modelos.sql` foi aplicada manualmente no Supabase de
+  produção em 15/09/2026.
+- O banco de produção não possui a relação
+  `supabase_migrations.schema_migrations`; por isso, essa aplicação não tem um
+  registro no histórico do Supabase CLI.
+- Não deve ser criada uma tabela de histórico artificial para compensar essa
+  ausência. O arquivo da migration permanece no repositório como documentação
+  do schema vigente.
+
 ## Publicação futura
 
 1. importe o projeto na Vercel;

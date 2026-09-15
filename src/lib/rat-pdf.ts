@@ -5,7 +5,7 @@ import { PDFDocument, PDFName, StandardFonts, rgb, type PDFForm, type PDFImage, 
 
 import type { RatAssinaturas, RatRevisao } from "@/lib/rat-types";
 
-const TEMPLATE = path.join(process.cwd(), "Documentacao", "Modelos", "RAT_Claro_Modelo.pdf");
+export const CAMINHO_TEMPLATE_RAT_CLARO = path.join(process.cwd(), "Documentacao", "Modelos", "RAT_Claro_Modelo.pdf");
 const CHECK = "Caixa de sele#C3#A7#C3#A3o 1";
 const TEXT = "Caixa de texto 1";
 const RADIO = "Bot#C3#A3o de op#C3#A7#C3#A3o 1";
@@ -100,7 +100,7 @@ function preencherCampos(form: PDFForm, dados: RatRevisao) {
 }
 
 export async function gerarRatPdf(dados: RatRevisao, assinaturas: RatAssinaturas = {}) {
-  const pdf = await PDFDocument.load(await readFile(TEMPLATE));
+  const pdf = await PDFDocument.load(await readFile(CAMINHO_TEMPLATE_RAT_CLARO));
   const page = pdf.getPage(0);
   const form = pdf.getForm();
   const font = await pdf.embedFont(StandardFonts.Helvetica);

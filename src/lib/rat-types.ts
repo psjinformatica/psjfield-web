@@ -27,7 +27,29 @@ export type RatAssinaturas = {
   tecnico?: { nome: string; assinado_em: string; bytes: Uint8Array };
 };
 
+export type RatModeloPersistido = "claro" | "dasa";
+
+export type RatAssinaturaSnapshot = {
+  bucket: "assinaturas";
+  caminho: string;
+  nome: string;
+  sha256: string;
+  registrada_em: string;
+};
+
+export type RatAssinaturasSnapshot = {
+  cliente?: RatAssinaturaSnapshot;
+  tecnico?: RatAssinaturaSnapshot;
+};
+
+export type RatDadosRevisao = RatRevisao | import("@/lib/rat-dasa-types").RatDasaSnapshotV1;
+
 export type RatRegistro = {
   id: string; chamado_id: number; versao: number; caminho_pdf: string; hash_pdf: string;
-  tecnico: string; status_rat: string; atual: boolean; gerado_em: string; dados_revisao: RatRevisao;
+  tecnico: string; status_rat: string; atual: boolean; gerado_em: string; dados_revisao: RatDadosRevisao;
+  modelo_rat?: RatModeloPersistido;
+  modelo_versao?: number;
+  schema_versao?: number;
+  template_hash?: string;
+  assinaturas_snapshot?: RatAssinaturasSnapshot;
 };

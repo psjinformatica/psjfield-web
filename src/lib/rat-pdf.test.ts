@@ -1,7 +1,9 @@
+import path from "node:path";
+
 import { PDFDocument, PDFName } from "pdf-lib";
 import { describe, expect, it } from "vitest";
 
-import { gerarRatPdf } from "@/lib/rat-pdf";
+import { CAMINHO_TEMPLATE_RAT_CLARO, gerarRatPdf } from "@/lib/rat-pdf";
 import type { RatRevisao } from "@/lib/rat-types";
 
 const vazia: RatRevisao = {
@@ -16,6 +18,10 @@ const vazia: RatRevisao = {
 };
 
 describe("gerarRatPdf", () => {
+  it("continua usando o modelo oficial da RAT Claro", () => {
+    expect(CAMINHO_TEMPLATE_RAT_CLARO).toBe(path.join(process.cwd(), "Documentacao", "Modelos", "RAT_Claro_Modelo.pdf"));
+  });
+
   it("gera um A4 de uma página com campos completos e texto longo", async () => {
     const bytes = await gerarRatPdf(vazia);
     const pdf = await PDFDocument.load(bytes);
