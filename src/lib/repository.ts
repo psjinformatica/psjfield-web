@@ -24,7 +24,7 @@ export async function listarChamados(): Promise<ChamadoResumo[]> {
     const linhas = await sql<ChamadoOrdenavel[]>`
     SELECT c.id, c.numero_chamado, c.status, c.data_agendada, c.hora_agendada,
            c.cliente, c.projeto, c.cidade, c.estado, c.atividade, c.valor_base,
-           cr.encerrado_em, c.atualizado_em
+           c.visualizado_em, cr.encerrado_em, c.atualizado_em
     FROM chamados c
     LEFT JOIN contas_receber cr ON cr.chamado_id = c.id
     ORDER BY CASE
@@ -74,6 +74,19 @@ export async function buscarChamado(id: number): Promise<Chamado | null> {
     FROM chamados WHERE id = ${id}
   `;
     return linhas[0] ? { ...linhas[0], id: Number(linhas[0].id) } : null;
+  });
+}
+
+export async function marcarChamadoVisualizado(id: number): Promise<boolean> {
+  return observeDatabaseOperation("chamados.marcarVisualizado", async () => {
+    const sql = getSql();
+    const linhas = await sql<{ id: number }[]>`
+      UPDATE chamados
+      SET visualizado_em = NOW()
+      WHERE id = ${id} AND visualizado_em IS NULL
+      RETURNING id
+    `;
+    return linhas.length === 1;
   });
 }
 

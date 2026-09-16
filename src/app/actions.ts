@@ -7,6 +7,10 @@ import { chamadosService } from "@/lib/server-service";
 
 export type ActionState = { sucesso?: string; erro?: string };
 
+export async function marcarChamadoVisualizadoAction(id: number) {
+  if (await chamadosService.marcarVisualizado(id)) revalidatePath("/");
+}
+
 export async function salvarAtendimentoAction(
   id: number,
   _estado: ActionState,

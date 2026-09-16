@@ -9,12 +9,14 @@ import {
   finalizarChamado,
   importarChamado,
   listarChamados,
+  marcarChamadoVisualizado,
   reabrirChamado,
 } from "@/lib/repository";
 
 const gateway: ChamadosGateway = {
   listar: listarChamados,
   buscar: buscarChamado,
+  marcarVisualizado: marcarChamadoVisualizado,
   atualizar: atualizarAtendimento,
   finalizar: finalizarChamado,
   reabrir: reabrirChamado,

@@ -51,6 +51,7 @@ function importacao(hash = "hash-1"): ChamadoImportacao {
 
 class GatewayMemoria implements ChamadosGateway {
   registros = new Map<number, Chamado>();
+  visualizacoes = new Map<number, string | null>();
   hashes = new Map<string, number>();
   proximoId = 1;
   falhar = false;
@@ -60,11 +61,22 @@ class GatewayMemoria implements ChamadosGateway {
 
   async listar(): Promise<ChamadoResumo[]> {
     if (this.falhar) throw new Error("Banco indisponível");
-    return [...this.registros.values()];
+    return [...this.registros.values()].map((registro) => ({
+      ...registro,
+      visualizado_em: this.visualizacoes.get(registro.id) ?? null,
+    }));
   }
   async buscar(id: number) {
     if (this.falhar) throw new Error("Banco indisponível");
     return this.registros.get(id) || null;
+  }
+  async marcarVisualizado(id: number) {
+    if (this.falhar) throw new Error("Banco indisponível");
+    const atual = this.registros.get(id);
+    if (!atual) return false;
+    if (this.visualizacoes.get(id)) return false;
+    this.visualizacoes.set(id, "2026-09-15T22:00:00.000Z");
+    return true;
   }
   async atualizar(id: number, dados: AtendimentoInput) {
     if (this.falhar) throw new Error("Banco indisponível");
@@ -117,6 +129,7 @@ class GatewayMemoria implements ChamadosGateway {
     if (this.falhar) throw new Error("Banco indisponível");
     const id = this.proximoId++;
     this.hashes.set(chamado.hash_email, id);
+    this.visualizacoes.set(id, null);
     this.registros.set(id, {
       ...chamado,
       id,
@@ -144,6 +157,19 @@ describe("ChamadosService", () => {
     const id = await service.importar(importacao(), "teste.eml");
     expect(await service.listar()).toHaveLength(1);
     expect((await service.buscar(id))?.numero_chamado).toBe("MI-100");
+  });
+
+  it("registra somente a primeira visualização do chamado", async () => {
+    const gateway = new GatewayMemoria();
+    const service = new ChamadosService(gateway);
+    const id = await service.importar(importacao(), "teste.eml");
+
+    await expect(service.marcarVisualizado(id)).resolves.toBe(true);
+    const primeiraVisualizacao = gateway.visualizacoes.get(id);
+    await expect(service.marcarVisualizado(id)).resolves.toBe(false);
+
+    expect(primeiraVisualizacao).toBe("2026-09-15T22:00:00.000Z");
+    expect(gateway.visualizacoes.get(id)).toBe(primeiraVisualizacao);
   });
 
   it("atualiza o atendimento e valida horários", async () => {

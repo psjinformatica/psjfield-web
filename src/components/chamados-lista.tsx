@@ -2,15 +2,7 @@
 
 import { CalendarDays, ChevronRight, MapPin, Search } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState, useSyncExternalStore } from "react";
-
-import {
-  assinarAcessados,
-  idsAcessados,
-  marcarComoAcessado,
-  snapshotAcessados,
-  snapshotServidor,
-} from "@/lib/chamados-acessados";
+import { useMemo, useState } from "react";
 import { formatarCidade, formatarDataRelativa, formatarMoeda } from "@/lib/format";
 import type { ChamadoResumo } from "@/lib/types";
 import { STATUS_OPERACIONAIS } from "@/lib/status";
@@ -21,9 +13,6 @@ const statusDisponiveis = ["Todos", ...STATUS_OPERACIONAIS];
 export function ChamadosLista({ chamados }: { chamados: ChamadoResumo[] }) {
   const [busca, setBusca] = useState("");
   const [status, setStatus] = useState("Todos");
-  const acessados = idsAcessados(
-    useSyncExternalStore(assinarAcessados, snapshotAcessados, snapshotServidor),
-  );
   const filtrados = useMemo(
     () => filtrarChamados(chamados, busca, status),
     [busca, chamados, status],
@@ -64,14 +53,13 @@ export function ChamadosLista({ chamados }: { chamados: ChamadoResumo[] }) {
               className="call-card"
               href={`/chamados/${chamado.id}`}
               key={chamado.id}
-              onClick={() => marcarComoAcessado(chamado.id)}
             >
               <div className="call-card-top">
                 <div className="card-badges">
                   <span className={`status status-${chamado.status.toLocaleLowerCase("pt-BR").replaceAll(" ", "-")}`}>
                     {chamado.status || "Sem status"}
                   </span>
-                  {!acessados.has(chamado.id) && <span className="new-badge">NOVO</span>}
+                  {chamado.visualizado_em === null && <span className="new-badge">NOVO</span>}
                 </div>
                 <ChevronRight size={20} aria-hidden="true" />
               </div>

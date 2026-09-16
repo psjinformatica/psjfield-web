@@ -15,6 +15,7 @@ import { validarAtendimento, validarFinalizacao, validarReabertura } from "@/lib
 export interface ChamadosGateway {
   listar(): Promise<ChamadoResumo[]>;
   buscar(id: number): Promise<Chamado | null>;
+  marcarVisualizado(id: number): Promise<boolean>;
   atualizar(id: number, dados: AtendimentoInput): Promise<AtendimentoAtualizado>;
   finalizar(id: number, dados: FinalizacaoInput): Promise<ChamadoFinalizado>;
   reabrir(id: number, dados: ReaberturaInput): Promise<ChamadoReaberto>;
@@ -33,6 +34,11 @@ export class ChamadosService {
   buscar(id: number) {
     if (!Number.isSafeInteger(id) || id <= 0) throw new Error("Chamado inválido.");
     return this.gateway.buscar(id);
+  }
+
+  marcarVisualizado(id: number) {
+    if (!Number.isSafeInteger(id) || id <= 0) throw new Error("Chamado inválido.");
+    return this.gateway.marcarVisualizado(id);
   }
 
   buscarHash(hash: string) {
