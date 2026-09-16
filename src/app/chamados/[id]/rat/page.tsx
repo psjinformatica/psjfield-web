@@ -7,7 +7,7 @@ import { buscarAssinaturaCliente, buscarAssinaturaTecnico } from "@/lib/assinatu
 import { observeRequest } from "@/lib/db-observability";
 import { mapChamadoParaRatDasa } from "@/lib/rat-dasa-mapper";
 import { chamadoSimulacaoRatDasa, criarSimulacaoRatDasa } from "@/lib/rat-dasa-simulation";
-import { persistenciaDasaLocalHabilitada } from "@/lib/rat-local-environment";
+import { persistenciaDasaHabilitada } from "@/lib/rat-local-environment";
 import { mapearChamadoParaRat } from "@/lib/rat-mapper";
 import {
   mensagemModeloRatIndisponivel,
@@ -41,9 +41,13 @@ export default async function PrepararRat({
     if (!chamado) notFound();
     const modelo = resolverModeloRat(chamado);
     if (modelo === "dasa-v1") {
-      const inicialMapeado = simulacaoDasa
+      const baseMapeada = simulacaoDasa
         ? criarSimulacaoRatDasa()
         : mapChamadoParaRatDasa(chamado, { tecnico: await buscarAssinaturaTecnico() });
+      const inicialMapeado = {
+        ...baseMapeada,
+        tecnico: { ...baseMapeada.tecnico, assinatura_tecnico: null },
+      };
       const versoes = simulacaoDasa
         ? [] as Awaited<ReturnType<typeof ratService.listar>>
         : await ratService.listar(chamadoId);
@@ -58,18 +62,18 @@ export default async function PrepararRat({
         tecnico: {
           ...revisaoAnterior.tecnico,
           nome_tecnico: inicialMapeado.tecnico.nome_tecnico,
-          assinatura_tecnico: inicialMapeado.tecnico.assinatura_tecnico,
+          assinatura_tecnico: null,
         },
       } : inicialMapeado;
-      const homologacaoLocal = !simulacaoDasa && persistenciaDasaLocalHabilitada();
+      const persistenciaHabilitada = !simulacaoDasa && persistenciaDasaHabilitada();
       return <main className="page-shell detail-page">
         <Link className="back-link" href={`/chamados/${chamadoId}`}><ArrowLeft size={18} />Voltar ao chamado</Link>
-        <header className="detail-header"><div><span className="eyebrow">RAT DASA</span><h1>{chamado.numero_chamado}</h1><p>Prepare e confira uma prévia local antes de qualquer persistência.</p></div></header>
+        <header className="detail-header"><div><span className="eyebrow">RAT DASA</span><h1>{chamado.numero_chamado}</h1><p>Revise os dados antes de gerar a prévia ou a versão oficial.</p></div></header>
         {simulacaoDasa ? <p className="simulation-notice">Simulação local segura: nenhum dado do chamado 20 é consultado ou alterado.</p> : null}
         <RatDasaForm
           chamadoId={chamadoId}
           inicial={inicial}
-          persistenciaLocal={homologacaoLocal}
+          persistenciaHabilitada={persistenciaHabilitada}
           versoes={versoesDasa}
         />
       </main>;

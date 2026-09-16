@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { describe, expect, it, vi } from "vitest";
 
 import type { AssinaturaCliente, AssinaturaTecnico } from "@/lib/assinaturas-types";
@@ -102,10 +104,32 @@ describe("RatService", () => {
     expect(rat.assinaturas_snapshot).toEqual(expect.objectContaining({ cliente: expect.objectContaining({ sha256: expect.stringMatching(/^[0-9a-f]{64}$/) }), tecnico: expect.objectContaining({ sha256: expect.stringMatching(/^[0-9a-f]{64}$/) }) }));
   });
 
-  it("bloqueia DASA fora da infraestrutura local antes de PDF, Storage ou banco", async () => {
+  it("bloqueia DASA sem autorização explícita antes de PDF, Storage ou banco", async () => {
     const cenario = criarCenario({ dasa: true });
-    await expect(cenario.service.gerarRat(20, criarRatDasaValida())).rejects.toThrow("somente na homologação local");
+    await expect(cenario.service.gerarRat(20, criarRatDasaValida())).rejects.toThrow("desabilitada neste ambiente");
     expect(cenario.gerarDasa).not.toHaveBeenCalled(); expect(cenario.storage.enviados).toEqual([]); expect(cenario.gateway.registros).toEqual([]);
+  });
+
+  it("permite Agendado somente para DASA autorizado sem alterar o chamado", async () => {
+    const dasa = criarCenario({ dasa: true, permitirDasa: true });
+    dasa.gateway.chamado.status = "Agendado";
+    const dados = criarRatDasaValida(); dados.cliente.assinatura_cliente = null; dados.tecnico.assinatura_tecnico = null;
+    await expect(dasa.service.gerarRat(20, dados)).resolves.toMatchObject({ versao: 1, modelo_rat: "dasa" });
+    expect(dasa.gateway.chamado.status).toBe("Agendado");
+
+    const claro = criarCenario(); claro.gateway.chamado.status = "Agendado";
+    await expect(claro.service.gerarRat(1, revisaoClaro)).rejects.toThrow("em atendimento ou finalizados");
+  });
+
+  it("consulta chamado, assinatura do cliente e técnico em sequência", async () => {
+    const cenario = criarCenario({ dasa: true, permitirDasa: true });
+    const ordem: string[] = [];
+    cenario.gateway.buscarChamado = vi.fn(async () => { ordem.push("chamado"); return cenario.gateway.chamado; });
+    cenario.gateway.buscarCliente = vi.fn(async () => { ordem.push("cliente"); return null; });
+    cenario.gateway.buscarTecnico = vi.fn(async () => { ordem.push("tecnico"); return null; });
+    const dados = criarRatDasaValida(); dados.cliente.assinatura_cliente = null; dados.tecnico.assinatura_tecnico = null;
+    await cenario.service.gerarRat(20, dados);
+    expect(ordem).toEqual(["chamado", "cliente", "tecnico"]);
   });
 
   it("cria versões 1 e 2 DASA com identidade, hashes e arquivos independentes", async () => {
@@ -114,6 +138,7 @@ describe("RatService", () => {
     const segunda = structuredClone(primeira); segunda.atendimento.solucao_aplicada = "Solução revisada na segunda versão";
     const v1 = await cenario.service.gerarRat(20, primeira); const v2 = await cenario.service.gerarRat(20, segunda);
     expect(v1).toMatchObject({ versao: 1, atual: false, modelo_rat: "dasa", modelo_versao: 1, schema_versao: 1, template_hash: "d".repeat(64) });
+    expect(v1.hash_pdf).toBe(createHash("sha256").update(new Uint8Array([4, 5, 6])).digest("hex"));
     expect(v2).toMatchObject({ versao: 2, atual: true, modelo_rat: "dasa", modelo_versao: 1, schema_versao: 1 });
     expect(cenario.storage.enviados).toEqual(["20/uuid-1.pdf", "20/uuid-2.pdf"]); expect(cenario.storage.arquivos.has("20/uuid-1.pdf")).toBe(true);
     expect(cenario.gerarClaro).not.toHaveBeenCalled(); expect(cenario.gerarDasa).toHaveBeenCalledTimes(2);

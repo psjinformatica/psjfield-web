@@ -60,6 +60,32 @@ export function usarSolicitanteComoAcompanhante(dados: RatDasaSnapshotV1): RatDa
   };
 }
 
+export const CONFIRMACAO_EMISSAO_RAT_DASA = "Gerar a versão oficial desta RAT?\n\nA versão será armazenada e o PDF ficará registrado no histórico. Futuras correções deverão gerar uma nova versão.";
+
+type Solicitar = typeof fetch;
+
+export async function solicitarPreviaRatDasa(dados: RatDasaSnapshotV1, solicitar: Solicitar = fetch) {
+  return solicitar("/api/rat/dasa/preview", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(dados),
+  });
+}
+
+export async function solicitarEmissaoOficialRatDasa(
+  chamadoId: number,
+  dados: RatDasaSnapshotV1,
+  confirmar: (mensagem: string) => boolean,
+  solicitar: Solicitar = fetch,
+) {
+  if (!confirmar(CONFIRMACAO_EMISSAO_RAT_DASA)) return null;
+  return solicitar(`/api/chamados/${chamadoId}/rat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ dados }),
+  });
+}
+
 function Campo({ rotulo, valor, onChange, tipo = "text", obrigatorio = false }: {
   rotulo: string;
   valor: string;
@@ -100,10 +126,10 @@ function GradeChecks<T extends Record<string, boolean>>({ valores, rotulos, onCh
     <label key={String(chave)}><input type="checkbox" checked={valores[chave]} onChange={(evento) => onChange(chave, evento.target.checked)} />{rotulos[chave]}</label>)}</div>;
 }
 
-export function RatDasaForm({ chamadoId, inicial, persistenciaLocal = false, versoes = [] }: {
+export function RatDasaForm({ chamadoId, inicial, persistenciaHabilitada = false, versoes = [] }: {
   chamadoId: number;
   inicial: RatDasaSnapshotV1;
-  persistenciaLocal?: boolean;
+  persistenciaHabilitada?: boolean;
   versoes?: RatRegistro[];
 }) {
   const router = useRouter();
@@ -149,8 +175,7 @@ export function RatDasaForm({ chamadoId, inicial, persistenciaLocal = false, ver
     }));
   }
 
-  async function gerar(evento: FormEvent<HTMLFormElement>) {
-    evento.preventDefault();
+  async function gerar(persistir: boolean) {
     const validacao = analisarValidacaoRatDasaV1(dados);
     setPendencias(validacao.pendencias);
     setErro("");
@@ -161,23 +186,20 @@ export function RatDasaForm({ chamadoId, inicial, persistenciaLocal = false, ver
       return;
     }
     if (validacao.pendencias.length > 0) return;
+    const respostaPendente = persistir
+      ? solicitarEmissaoOficialRatDasa(chamadoId, dados, (mensagem) => window.confirm(mensagem))
+      : solicitarPreviaRatDasa(dados);
     setPendente(true);
     try {
-      const resposta = await fetch(
-        persistenciaLocal ? `/api/chamados/${chamadoId}/rat` : "/api/rat/dasa/preview",
-        {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(persistenciaLocal ? { dados } : dados),
-        },
-      );
+      const resposta = await respostaPendente;
+      if (!resposta) return;
       if (!resposta.ok) {
         const resultado = await resposta.json();
         throw new Error(resultado.erro || "Não foi possível gerar a RAT DASA.");
       }
-      if (persistenciaLocal) {
+      if (persistir) {
         const rat = await resposta.json();
-        setSucesso(`RAT DASA versão ${rat.versao} gerada na homologação local.`);
+        setSucesso(`RAT DASA versão ${rat.versao} gerada oficialmente.`);
         router.refresh();
         return;
       }
@@ -194,11 +216,9 @@ export function RatDasaForm({ chamadoId, inicial, persistenciaLocal = false, ver
   }
 
   return <>
-    <form className="form-card dasa-form" onSubmit={gerar}>
-      <div className="section-heading"><span>D</span><div><h2>Preparação da RAT DASA</h2><p>{persistenciaLocal ? "Homologação com versionamento na infraestrutura local." : "Revise os dados e gere apenas uma prévia local."}</p></div></div>
-      <p className="rat-warning">{persistenciaLocal
-        ? "Modo local: a RAT cria uma versão e envia o PDF somente para o Supabase local. Assinaturas opcionais são incorporadas quando houver referência compatível."
-        : "A prévia não cria versão, não envia arquivo e não altera o chamado. Assinaturas permanecem opcionais e não são incluídas nesta simulação."}</p>
+    <form className="form-card dasa-form" onSubmit={(evento: FormEvent<HTMLFormElement>) => { evento.preventDefault(); void gerar(false); }}>
+      <div className="section-heading"><span>D</span><div><h2>Preparação da RAT DASA</h2><p>Revise os dados e gere uma prévia antes da emissão oficial.</p></div></div>
+      <p className="rat-warning">A prévia não cria versão, não envia arquivo e não altera o chamado. Assinaturas permanecem opcionais e, sem imagem incorporada, o nome identifica o respectivo campo.</p>
 
       <section className="dasa-section"><h3>1. Local</h3>
         <div className="review-grid"><Campo rotulo="Unidade/nome" valor={dados.local.unidade_nome} onChange={(valor) => atualizarLocal("unidade_nome", valor)} obrigatorio />
@@ -265,9 +285,10 @@ export function RatDasaForm({ chamadoId, inicial, persistenciaLocal = false, ver
       {pendencias.length > 0 ? <div className="dasa-validation" role="alert"><strong>Faltam {pendencias.length} informações para gerar a RAT</strong><ul>{pendencias.map((item) => <li key={item.campo}>{item.campo}: {item.mensagem}</li>)}</ul></div> : null}
       {erro ? <p className="feedback error" role="alert">{erro}</p> : null}
       {sucesso ? <p className="feedback success" role="status">{sucesso}</p> : null}
-      <button className="primary-button dasa-preview-button" disabled={pendente}>{pendente
+      <button className="secondary-button dasa-preview-button" disabled={pendente}>{pendente
         ? <><LoaderCircle className="spin" size={17} />Gerando...</>
-        : <><FileDown size={17} />{persistenciaLocal ? "Gerar RAT DASA" : "Gerar prévia da RAT"}</>}</button>
+        : <><FileDown size={17} />Gerar prévia da RAT</>}</button>
+      {persistenciaHabilitada ? <button className="primary-button dasa-preview-button" type="button" disabled={pendente} onClick={() => { void gerar(true); }}><FileDown size={17} />Gerar RAT</button> : null}
     </form>
 
     {urlPrevia ? <section className="detail-card dasa-preview" aria-live="polite"><div className="section-heading"><span>PDF</span><div><h2>Prévia local</h2><p>Este arquivo existe apenas nesta sessão do navegador.</p></div></div><a className="secondary-button" href={urlPrevia} target="_blank" rel="noreferrer"><ExternalLink size={17} />Abrir prévia em nova aba</a><iframe title="Prévia da RAT DASA" src={urlPrevia} /></section> : null}

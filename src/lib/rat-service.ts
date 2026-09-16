@@ -72,15 +72,18 @@ export class RatService {
     if (!chamado) throw new Error("Chamado não encontrado.");
     const modelo = resolverModeloRat(chamado);
     if (modelo === "dasa-v1" && !this.permitirDasa) {
-      throw new Error("A geração oficial da RAT DASA está disponível somente na homologação local.");
+      throw new Error("A geração oficial da RAT DASA está desabilitada neste ambiente.");
     }
-    if (!["Em atendimento", "Concluído", "Improdutivo", "Cancelado"].includes(chamado.status)) {
+    const statusPermitido = ["Em atendimento", "Concluído", "Improdutivo", "Cancelado"].includes(chamado.status)
+      || (modelo === "dasa-v1" && chamado.status === "Agendado");
+    if (!statusPermitido) {
       throw new Error("A RAT pode ser gerada apenas para chamados em atendimento ou finalizados.");
     }
     if (chamado.status === "Cancelado" && !confirmarCancelado) {
       throw new Error("Confirme a geração da RAT para o chamado cancelado.");
     }
-    const [cliente, tecnico] = await Promise.all([this.gateway.buscarCliente(chamadoId), this.gateway.buscarTecnico()]);
+    const cliente = await this.gateway.buscarCliente(chamadoId);
+    const tecnico = await this.gateway.buscarTecnico();
     const instante = this.agora().toISOString();
     const preparado = await this.handlers[modelo].preparar({
       entrada,
