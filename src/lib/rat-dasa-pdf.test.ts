@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   CAMINHO_TEMPLATE_RAT_DASA,
+  DESLOCAMENTO_VERTICAL_COMPONENTES_DATA_HORA_RAT_DASA,
   POSICOES_COMPONENTES_DATA_HORA_RAT_DASA,
   POSICOES_MARCACOES_RAT_DASA,
   RatDasaPdfOverflowError,
@@ -203,13 +204,14 @@ describe("gerarRatDasaPdf", () => {
     expect(new Set(componentes.map((item) => item.x)).size).toBe(2);
   });
 
-  it("usa posições horizontais independentes sem alterar a altura aprovada", () => {
+  it("mantém as posições horizontais e aplica somente o ajuste vertical fino", () => {
     expect(POSICOES_COMPONENTES_DATA_HORA_RAT_DASA).toEqual({
       inicio_data: { dia: 72, mes: 90, ano: 117 },
       inicio_hora: { hora: 176, minuto: 194 },
       termino_data: { dia: 378, mes: 397, ano: 424 },
       termino_hora: { hora: 481, minuto: 504 },
     });
+    expect(DESLOCAMENTO_VERTICAL_COMPONENTES_DATA_HORA_RAT_DASA).toBe(3);
   });
 
   it("quebra texto longo em várias linhas dentro da caixa", async () => {

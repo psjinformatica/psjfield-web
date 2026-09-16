@@ -84,6 +84,8 @@ export const POSICOES_COMPONENTES_DATA_HORA_RAT_DASA = {
   termino_hora: { hora: 481, minuto: 504 },
 } as const;
 
+export const DESLOCAMENTO_VERTICAL_COMPONENTES_DATA_HORA_RAT_DASA = 3;
+
 export const POSICOES_MARCACOES_RAT_DASA = {
   atendimento: {
     FIELD_SERVICES: [59.4, 164.4, 9.8, 9.8], REMOTE_HANDS: [59.4, 176.9, 9.8, 9.8],
@@ -283,7 +285,12 @@ function desenharComponentesDataHora(
     font,
     campo,
     valor,
-    { ...caixa, x, largura: 14 },
+    {
+      ...caixa,
+      x,
+      topo: caixa.topo + DESLOCAMENTO_VERTICAL_COMPONENTES_DATA_HORA_RAT_DASA,
+      largura: 14,
+    },
     { tamanhoMaximo: 9, tamanhoMinimo: 9, maximoLinhas: 1 },
   ));
 }
