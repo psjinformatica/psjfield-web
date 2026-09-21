@@ -137,12 +137,13 @@ export async function finalizarChamado(
     const atuais = await transacao<{
       id: number;
       numero_chamado: string;
+      cliente: string;
       status: string;
       hora_inicio: string;
       hora_termino: string;
       observacoes_atendimento: string;
     }[]>`
-      SELECT id, numero_chamado, status, hora_inicio, hora_termino, observacoes_atendimento
+      SELECT id, numero_chamado, cliente, status, hora_inicio, hora_termino, observacoes_atendimento
       FROM chamados WHERE id = ${id} FOR UPDATE
     `;
     const atual = atuais[0];
@@ -166,10 +167,12 @@ export async function finalizarChamado(
       WHERE id = ${id}
       RETURNING status, hora_termino
     `;
+    let geraRecebimento = false;
     if (statusGeraRecebimento(linhas[0].status)) {
-      await registrarContaAutomatica(transacao, {
+      geraRecebimento = await registrarContaAutomatica(transacao, {
         id: Number(atual.id),
         numero_chamado: atual.numero_chamado,
+        cliente: atual.cliente,
         hora_inicio: atual.hora_inicio,
         hora_termino: linhas[0].hora_termino,
       }, encerradoEm);
@@ -178,7 +181,7 @@ export async function finalizarChamado(
     }
     return {
       ...linhas[0],
-      gera_recebimento: statusGeraRecebimento(linhas[0].status),
+      gera_recebimento: geraRecebimento,
     };
     });
   });

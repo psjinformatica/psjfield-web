@@ -5,9 +5,13 @@ import { FinanceiroService, type FinanceiroGateway } from "@/lib/financeiro-serv
 describe("FinanceiroService", () => {
   it("valida e registra o recebimento", async () => {
     let recebido: unknown;
+    const conta = { previsao_recebimento: "2026-09-15", valor_recebido: null as number | null };
     const gateway: FinanceiroGateway = {
       listar: async () => [],
-      marcarRecebida: async (id, valor, data) => { recebido = { id, valor, data }; },
+      marcarRecebida: async (id, valor, data) => {
+        conta.valor_recebido = valor;
+        recebido = { id, valor, data };
+      },
     };
     const service = new FinanceiroService(gateway);
     await service.marcarRecebida("8e84b693-e79d-41b5-9e27-ce087109bd18", {
@@ -19,6 +23,7 @@ describe("FinanceiroService", () => {
       valor: 130.5,
       data: "2026-08-11",
     });
+    expect(conta).toEqual({ previsao_recebimento: "2026-09-15", valor_recebido: 130.5 });
   });
 
   it("rejeita valor ou data inválidos", async () => {

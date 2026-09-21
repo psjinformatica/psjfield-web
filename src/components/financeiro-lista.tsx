@@ -7,13 +7,34 @@ import { CalendarDays } from "lucide-react";
 import { formatarData, formatarMoeda } from "@/lib/format";
 import type { ContaReceber } from "@/lib/financeiro-types";
 
+export function filtrarContasFinanceiro(contas: ContaReceber[], filtro: string) {
+  return contas.filter((conta) => filtro === "TODOS" || conta.situacao === filtro);
+}
+
+export function indicadoresContaFinanceiro(conta: ContaReceber) {
+  const valorPrincipal = conta.situacao === "RECEBIDO" ? conta.valor_recebido : conta.valor_total;
+  return [
+    { rotulo: "Valor", valor: valorPrincipal ? formatarMoeda(valorPrincipal) : "Pendente de cálculo" },
+    conta.situacao === "RECEBIDO"
+      ? { rotulo: "Recebido em", valor: formatarData(conta.recebido_em || "") }
+      : { rotulo: "Previsão", valor: formatarData(conta.previsao_recebimento) },
+    {
+      rotulo: "Duração",
+      valor: conta.duracao_minutos === null
+        ? "Revisão necessária"
+        : `${Math.floor(conta.duracao_minutos / 60)}h${String(conta.duracao_minutos % 60).padStart(2, "0")}`,
+    },
+    { rotulo: "Origem", valor: conta.origem === "AUTOMATICO" ? "Automático" : "Histórico manual" },
+  ];
+}
+
 export function FinanceiroLista({ contas }: { contas: ContaReceber[] }) {
   const router = useRouter();
   const [filtro, setFiltro] = useState("TODOS");
   const [pendente, setPendente] = useState<string>();
   const [erro, setErro] = useState("");
   const filtradas = useMemo(
-    () => contas.filter((conta) => filtro === "TODOS" || conta.situacao === filtro),
+    () => filtrarContasFinanceiro(contas, filtro),
     [contas, filtro],
   );
 
@@ -55,12 +76,9 @@ export function FinanceiroLista({ contas }: { contas: ContaReceber[] }) {
     <div className="finance-grid">
       {filtradas.map((conta) => <article className="finance-card" key={conta.id}>
         <div className="finance-card-head"><div><span>Chamado</span><strong>{conta.numero_chamado}</strong></div><span className={`finance-status finance-${conta.situacao.toLowerCase()}`}>{conta.rotulo_situacao}</span></div>
-        <dl>
-          <div><dt>Valor</dt><dd>{conta.valor_total ? formatarMoeda(conta.valor_total) : "Pendente de cálculo"}</dd></div>
-          <div><dt>Previsão</dt><dd>{formatarData(conta.previsao_recebimento)}</dd></div>
-          <div><dt>Duração</dt><dd>{conta.duracao_minutos === null ? "Revisão necessária" : `${Math.floor(conta.duracao_minutos / 60)}h${String(conta.duracao_minutos % 60).padStart(2, "0")}`}</dd></div>
-          <div><dt>Origem</dt><dd>{conta.origem === "AUTOMATICO" ? "Automático" : "Histórico manual"}</dd></div>
-        </dl>
+        <dl>{indicadoresContaFinanceiro(conta).map((indicador) => (
+          <div key={indicador.rotulo}><dt>{indicador.rotulo}</dt><dd>{indicador.valor}</dd></div>
+        ))}</dl>
         {conta.revisao_pendente && <p className="finance-review">Revisão pendente</p>}
         {conta.situacao !== "RECEBIDO" && !conta.revisao_pendente && conta.valor_total && <form action={(dados) => receber(conta, dados)} className="receive-form">
           <label>Data recebida<input name="recebido_em" type="date" required /></label>

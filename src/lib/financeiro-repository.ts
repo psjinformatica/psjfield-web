@@ -4,17 +4,26 @@ import type postgres from "postgres";
 
 import { getSql } from "@/lib/db";
 import { observeDatabaseOperation } from "@/lib/db-observability";
-import { calcularFinanceiro } from "@/lib/financeiro-calculo";
+import {
+  prepararRecebivelAutomatico,
+} from "@/lib/financeiro-politicas";
 import { REGRA_PRECO_ATUAL, type ContaReceber } from "@/lib/financeiro-types";
 
 type Transacao = postgres.TransactionSql<Record<string, never>>;
 
 export async function registrarContaAutomatica(
   transacao: Transacao,
-  chamado: { id: number; numero_chamado: string; hora_inicio: string; hora_termino: string },
+  chamado: { id: number; numero_chamado: string; cliente: string; hora_inicio: string; hora_termino: string },
   encerradoEm: string,
 ) {
-  const calculo = calcularFinanceiro(chamado.hora_inicio, chamado.hora_termino);
+  const recebivel = prepararRecebivelAutomatico(
+    chamado.cliente,
+    encerradoEm,
+    chamado.hora_inicio,
+    chamado.hora_termino,
+  );
+  if (!recebivel) return false;
+  const { calculo, prazo_dias: prazoDias } = recebivel;
   await transacao`
     INSERT INTO contas_receber (
       chamado_id, numero_chamado_snapshot, encerrado_em,
@@ -27,7 +36,7 @@ export async function registrarContaAutomatica(
       ${calculo?.duracao_minutos ?? null}, ${calculo?.horas_adicionais ?? null},
       ${calculo?.valor_base ?? 100}, ${calculo?.valor_hora_adicional ?? 30},
       ${calculo?.valor_adicional ?? null}, ${calculo?.valor_total ?? null},
-      ${REGRA_PRECO_ATUAL}, 'AUTOMATICO', 30,
+      ${REGRA_PRECO_ATUAL}, 'AUTOMATICO', ${prazoDias},
       ${calculo ? "A_RECEBER" : "EM_REVISAO"}, ${!calculo}
     )
     ON CONFLICT (chamado_id) DO UPDATE SET
@@ -42,10 +51,12 @@ export async function registrarContaAutomatica(
       valor_adicional = CASE WHEN contas_receber.situacao = 'RECEBIDO' THEN contas_receber.valor_adicional ELSE EXCLUDED.valor_adicional END,
       valor_total = CASE WHEN contas_receber.situacao = 'RECEBIDO' THEN contas_receber.valor_total ELSE EXCLUDED.valor_total END,
       regra_preco = CASE WHEN contas_receber.situacao = 'RECEBIDO' THEN contas_receber.regra_preco ELSE EXCLUDED.regra_preco END,
+      prazo_dias = CASE WHEN contas_receber.situacao = 'RECEBIDO' THEN contas_receber.prazo_dias ELSE EXCLUDED.prazo_dias END,
       situacao = CASE WHEN contas_receber.situacao = 'RECEBIDO' THEN 'RECEBIDO' ELSE EXCLUDED.situacao END,
       revisao_pendente = CASE WHEN contas_receber.situacao = 'RECEBIDO' THEN TRUE ELSE EXCLUDED.revisao_pendente END,
       atualizado_em = NOW()
   `;
+  return true;
 }
 
 export async function colocarContaEmRevisao(transacao: Transacao, chamadoId: number) {
@@ -71,7 +82,9 @@ export async function listarContasReceber(): Promise<ContaReceber[]> {
              (cr.encerrado_em AT TIME ZONE 'America/Sao_Paulo')::date + cr.prazo_dias,
              'YYYY-MM-DD'
            ) AS previsao_recebimento,
-           cr.situacao, cr.revisao_pendente, cr.recebido_em, cr.valor_recebido,
+           cr.situacao, cr.revisao_pendente,
+           TO_CHAR(cr.recebido_em, 'YYYY-MM-DD') AS recebido_em,
+           cr.valor_recebido,
            cr.observacoes,
            CASE
              WHEN cr.situacao = 'RECEBIDO' THEN 'Recebido'
