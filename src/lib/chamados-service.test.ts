@@ -63,6 +63,9 @@ class GatewayMemoria implements ChamadosGateway {
     if (this.falhar) throw new Error("Banco indisponível");
     return [...this.registros.values()].map((registro) => ({
       ...registro,
+      valor_financeiro: null,
+      valor_card: registro.valor_base,
+      pendencia_financeira: false,
       visualizado_em: this.visualizacoes.get(registro.id) ?? null,
     }));
   }

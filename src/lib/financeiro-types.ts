@@ -1,4 +1,5 @@
 export const REGRA_PRECO_ATUAL = "BASE_100_3H_ADICIONAL_30_V1";
+export const VALOR_BASE_ATUAL = 100;
 
 export type SituacaoFinanceira = "A_RECEBER" | "EM_REVISAO" | "RECEBIDO";
 export type OrigemFinanceira = "AUTOMATICO" | "HISTORICO_MANUAL";

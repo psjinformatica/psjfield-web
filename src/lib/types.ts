@@ -10,10 +10,16 @@ export type ChamadoResumo = {
   estado: string;
   atividade: string;
   valor_base: string | null;
+  valor_financeiro: string | null;
+  valor_card: string | null;
+  pendencia_financeira: boolean;
   visualizado_em: string | null;
 };
 
-export type Chamado = Omit<ChamadoResumo, "visualizado_em"> & {
+export type Chamado = Omit<
+  ChamadoResumo,
+  "visualizado_em" | "valor_financeiro" | "valor_card" | "pendencia_financeira"
+> & {
   empresa_parceira: string;
   assunto_email: string;
   remetente: string;

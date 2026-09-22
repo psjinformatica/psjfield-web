@@ -1,6 +1,8 @@
-import type { ChamadoResumo } from "@/lib/types";
-
-export type ChamadoOrdenavel = ChamadoResumo & {
+export type ChamadoOrdenavel = {
+  id: number;
+  status: string;
+  data_agendada: string;
+  hora_agendada: string;
   encerrado_em?: Date | string | null;
   atualizado_em?: Date | string | null;
 };

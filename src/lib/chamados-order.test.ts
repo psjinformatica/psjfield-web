@@ -20,6 +20,10 @@ function chamado(
     estado: "PR",
     atividade: "Atividade",
     valor_base: "100.00",
+    valor_financeiro: null,
+    valor_card: "100.00",
+    pendencia_financeira: false,
+    visualizado_em: "2026-09-15T12:00:00.000Z",
     ...dados,
   };
 }

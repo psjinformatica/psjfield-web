@@ -70,7 +70,10 @@ export function ChamadosLista({ chamados }: { chamados: ChamadoResumo[] }) {
                 <span><MapPin size={16} />{formatarCidade(chamado.cidade, chamado.estado) || "Cidade não informada"}</span>
               </div>
               {chamado.atividade && <p className="activity">{chamado.atividade}</p>}
-              {chamado.valor_base && <strong className="price">{formatarMoeda(chamado.valor_base)}</strong>}
+              {chamado.valor_card && <strong className="price">{formatarMoeda(chamado.valor_card)}</strong>}
+              {chamado.pendencia_financeira && (
+                <strong className="price">Financeiro pendente</strong>
+              )}
             </Link>
           ))}
         </div>

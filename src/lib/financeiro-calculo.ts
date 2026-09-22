@@ -1,4 +1,8 @@
-import { REGRA_PRECO_ATUAL, type CalculoFinanceiro } from "@/lib/financeiro-types";
+import {
+  REGRA_PRECO_ATUAL,
+  VALOR_BASE_ATUAL,
+  type CalculoFinanceiro,
+} from "@/lib/financeiro-types";
 
 const HORARIO = /^([01]\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?$/;
 
@@ -14,7 +18,7 @@ export function calcularFinanceiro(horaInicio: string, horaFim: string): Calculo
 
   const duracaoMinutos = fim - inicio;
   const horasAdicionais = Math.ceil(Math.max(0, duracaoMinutos - 180) / 60);
-  const valorBase = 100;
+  const valorBase = VALOR_BASE_ATUAL;
   const valorHoraAdicional = 30;
   const valorAdicional = horasAdicionais * valorHoraAdicional;
 

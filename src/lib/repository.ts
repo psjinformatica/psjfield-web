@@ -17,14 +17,21 @@ import type {
 import { horarioAtualSaoPaulo, statusEncerraAtendimento, statusGeraRecebimento } from "@/lib/status";
 import { colocarContaEmRevisao, registrarContaAutomatica } from "@/lib/financeiro-repository";
 import { ordenarChamados, type ChamadoOrdenavel } from "@/lib/chamados-order";
+import { resolverValorCardChamado } from "@/lib/chamados-valor";
+
+type ChamadoLinhaListagem = Omit<
+  ChamadoResumo,
+  "valor_card" | "pendencia_financeira"
+> & ChamadoOrdenavel;
 
 export async function listarChamados(): Promise<ChamadoResumo[]> {
   return observeDatabaseOperation("chamados.listar", async () => {
     const sql = getSql();
-    const linhas = await sql<ChamadoOrdenavel[]>`
+    const linhas = await sql<ChamadoLinhaListagem[]>`
     SELECT c.id, c.numero_chamado, c.status, c.data_agendada, c.hora_agendada,
            c.cliente, c.projeto, c.cidade, c.estado, c.atividade, c.valor_base,
-           c.visualizado_em, cr.encerrado_em, c.atualizado_em
+           c.visualizado_em, cr.valor_total AS valor_financeiro,
+           cr.encerrado_em, c.atualizado_em
     FROM chamados c
     LEFT JOIN contas_receber cr ON cr.chamado_id = c.id
     ORDER BY CASE
@@ -55,7 +62,11 @@ export async function listarChamados(): Promise<ChamadoResumo[]> {
       const { encerrado_em, atualizado_em, ...resumo } = linha;
       void encerrado_em;
       void atualizado_em;
-      return { ...resumo, id: Number(resumo.id) };
+      return {
+        ...resumo,
+        ...resolverValorCardChamado(resumo),
+        id: Number(resumo.id),
+      };
     });
   });
 }
