@@ -144,6 +144,26 @@ describe("RatService", () => {
     expect(cenario.gerarClaro).not.toHaveBeenCalled(); expect(cenario.gerarDasa).toHaveBeenCalledTimes(2);
   });
 
+  it("mantém a numeração global ao substituir uma v1 Claro por uma v2 DASA", async () => {
+    const cenario = criarCenario({ permitirDasa: true });
+    const v1 = await cenario.service.gerarRat(1, revisaoClaro);
+    cenario.gateway.chamado = {
+      ...chamadoDasaSeguro,
+      id: 1,
+      cliente: "DASA Chamado para atendimento",
+      status: "Em atendimento",
+    };
+    const dados = criarRatDasaValida();
+    dados.cliente.assinatura_cliente = null;
+    dados.tecnico.assinatura_tecnico = null;
+
+    const v2 = await cenario.service.gerarRat(1, dados);
+
+    expect(v1).toMatchObject({ versao: 1, atual: false, status_rat: "Substituída", modelo_rat: "claro" });
+    expect(v2).toMatchObject({ versao: 2, atual: true, status_rat: "Gerada", modelo_rat: "dasa" });
+    expect(cenario.storage.enviados).toEqual(["1/uuid-1.pdf", "1/uuid-2.pdf"]);
+  });
+
   it("aceita DASA sem assinaturas e mantém snapshot integral e imutável", async () => {
     const cenario = criarCenario({ dasa: true, permitirDasa: true });
     const dados = criarRatDasaValida(); dados.cliente.assinatura_cliente = null; dados.tecnico.assinatura_tecnico = null;

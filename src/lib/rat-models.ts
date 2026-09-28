@@ -5,27 +5,25 @@ export const MODELOS_RAT = ["claro-v1", "dasa-v1"] as const;
 export type ModeloRat = (typeof MODELOS_RAT)[number];
 export type ModeloRatImplementado = ModeloRat;
 
-const CLIENTES_DASA = new Set([
-  "dasa",
-  "dasa sa",
-  "dasa s a",
-  "diagnosticos da america",
-  "diagnosticos da america sa",
-  "diagnosticos da america s a",
-]);
+const PADROES_CLIENTE_DASA = [
+  /^dasa(?: s a)?$/,
+  /^diagnosticos da america(?: s a)?$/,
+  /^dasa(?: s a)? chamado para atendimento$/,
+];
 
 export function normalizarClienteRat(cliente: string | null | undefined) {
   return (cliente || "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLocaleLowerCase("pt-BR")
-    .replace(/[./_-]+/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
     .trim()
     .replace(/\s+/g, " ");
 }
 
 export function resolverModeloRat(chamado: Pick<Chamado, "cliente">): ModeloRat {
-  return CLIENTES_DASA.has(normalizarClienteRat(chamado.cliente)) ? "dasa-v1" : "claro-v1";
+  const cliente = normalizarClienteRat(chamado.cliente);
+  return PADROES_CLIENTE_DASA.some((padrao) => padrao.test(cliente)) ? "dasa-v1" : "claro-v1";
 }
 
 export function modeloRatImplementado(modelo: ModeloRat): modelo is ModeloRatImplementado {

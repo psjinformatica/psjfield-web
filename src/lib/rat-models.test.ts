@@ -15,6 +15,10 @@ describe("resolverModeloRat", () => {
     "  DaSa  ",
     "DASA   S.A",
     "DASA S/A",
+    "DASA Chamado para atendimento",
+    "  dasa   chamado   para   ATENDIMENTO  ",
+    "DASA: Chamado para atendimento.",
+    "DASA S.A. - Chamado para atendimento",
     "Diagnósticos da América",
     "  DIAGNÓSTICOS   DA   AMÉRICA   S A  ",
   ])("resolve %j como dasa-v1", (cliente) => {
@@ -27,7 +31,18 @@ describe("resolverModeloRat", () => {
     expect(resolverModeloRat(chamado20)).toBe("dasa-v1");
   });
 
-  it.each(["Claro", "CLARO", "Cliente atual", "Cliente desconhecido", ""]) (
+  it.each([
+    "Claro",
+    "CLARO",
+    "Cliente atual",
+    "Cliente desconhecido",
+    "Fundasa Serviços",
+    "Dasatinibe",
+    "Cliente DASA",
+    "DASA Equipamentos",
+    "Diagnósticos da América Latina",
+    "",
+  ]) (
     "mantém %j no fallback claro-v1",
     (cliente) => {
       expect(resolverModeloRat({ cliente })).toBe("claro-v1");
@@ -36,6 +51,7 @@ describe("resolverModeloRat", () => {
 
   it("normaliza caixa, espaços e acentos em um único ponto", () => {
     expect(normalizarClienteRat("  Diagnósticos   da   América  ")).toBe("diagnosticos da america");
+    expect(normalizarClienteRat(" DASA: Chamado para atendimento. ")).toBe("dasa chamado para atendimento");
   });
 });
 
