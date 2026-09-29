@@ -3,11 +3,12 @@
 import { CheckCircle2, File, LoaderCircle, UploadCloud } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type ChangeEvent } from "react";
 
 import { formatarCidade, formatarDataHora } from "@/lib/format";
 import { CAMPOS_PREVIEW_IMPORTACAO } from "@/lib/importacao-campos";
 import type { ChamadoDuplicado, PreviaImportacao } from "@/lib/types";
+import type { ChamadoImportacao } from "@/lib/types";
 
 type RespostaPrevia = PreviaImportacao & { duplicado: ChamadoDuplicado | null; erro?: string };
 type RespostaConfirmacao = { id: number; erro?: string };
@@ -15,6 +16,34 @@ type RespostaConfirmacao = { id: number; erro?: string };
 type RoteadorPosImportacao = {
   replace: (href: string) => void;
 };
+
+const CAMPOS_MULTILINHA = new Set<keyof ChamadoImportacao>(["unidade_nome", "endereco", "atividade"]);
+
+export function CampoRevisaoImportacao({
+  campo,
+  rotulo,
+  valor,
+  onChange,
+}: {
+  campo: keyof ChamadoImportacao;
+  rotulo: string;
+  valor: string;
+  onChange: (valor: string) => void;
+}) {
+  const propriedades = { value: valor, onChange: (evento: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onChange(evento.target.value) };
+  return <label>{rotulo}
+    {CAMPOS_MULTILINHA.has(campo)
+      ? <textarea rows={2} {...propriedades} />
+      : <input
+          type={campo === "data_agendada" ? "date" : campo === "hora_agendada" ? "time" : "text"}
+          list={campo === "cliente" ? "clientes-importacao" : undefined}
+          pattern={campo === "numero_chamado" ? "(?:MI|SR)-[0-9]+(?:-[0-9]+)?" : undefined}
+          title={campo === "numero_chamado" ? "Use MI-123, MI-123-2 ou SR-123" : undefined}
+          maxLength={campo === "estado" ? 2 : undefined}
+          {...propriedades}
+        />}
+  </label>;
+}
 
 export async function confirmarImportacaoENavegar(
   form: FormData,
@@ -117,15 +146,19 @@ export function ImportarForm() {
           </div>
           <div className="review-grid">
             {CAMPOS_PREVIEW_IMPORTACAO.map(([campo, rotulo]) => (
-              <label key={campo}>{rotulo}
-                <input
-                  type={campo === "data_agendada" ? "date" : campo === "hora_agendada" ? "time" : "text"}
-                  value={String(previa.chamado[campo] ?? "")}
-                  onChange={(evento) => atualizar(campo, evento.target.value)}
-                />
-              </label>
+              <CampoRevisaoImportacao
+                key={campo}
+                campo={campo}
+                rotulo={rotulo}
+                valor={String(previa.chamado[campo] ?? "")}
+                onChange={(valor) => atualizar(campo, valor)}
+              />
             ))}
           </div>
+          <datalist id="clientes-importacao">
+            <option value="Claro" />
+            <option value="DASA" />
+          </datalist>
           <label>Descrição
             <textarea rows={4} value={previa.chamado.descricao} onChange={(evento) => atualizar("descricao", evento.target.value)} />
           </label>

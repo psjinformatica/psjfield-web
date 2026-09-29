@@ -56,6 +56,7 @@ describe("fluxo DASA de unidade e equipamento", () => {
 
     const revisado = aplicarRevisaoImportacao(previa.chamado, {
       unidade_nome: "Unidade DASA Revisada",
+      endereco: "Avenida Presidente Kennedy, 4121",
       equipamento: "Etiquetadora",
     });
     const rat = mapChamadoParaRatDasa(comoChamado(revisado));
@@ -64,6 +65,7 @@ describe("fluxo DASA de unidade e equipamento", () => {
     expect(rat.local).toMatchObject({
       unidade_nome: "Unidade DASA Revisada",
       unidade_nome_origem: "INFORMADO",
+      endereco: "Avenida Presidente Kennedy, 4121",
       telefone: "",
     });
     expect(rat.equipamento.tipo).toBe("Etiquetadora");

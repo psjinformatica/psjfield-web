@@ -87,4 +87,17 @@ describe("detalhe do chamado", () => {
     expect(html).not.toContain("chamado-unidade");
     expect(html).not.toContain("<span>Unidade</span>");
   });
+
+  it("exibe unidade para qualquer cliente, sem condicionar ao modelo DASA", async () => {
+    dependencias.buscarChamado.mockResolvedValue({
+      ...chamadoDasaSeguro,
+      cliente: "Claro",
+      unidade_nome: "Unidade informada pelo cliente",
+    });
+
+    const pagina = await DetalheChamado({ params: Promise.resolve({ id: "20" }) });
+    const html = renderToStaticMarkup(pagina);
+
+    expect(html).toContain("Unidade informada pelo cliente");
+  });
 });

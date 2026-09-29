@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { aplicarRevisaoImportacao } from "@/lib/importacao-campos";
+import { validarRevisaoImportacao } from "@/lib/importacao-campos";
 import { interpretarEml } from "@/lib/parser";
 import { chamadosService } from "@/lib/server-service";
 
@@ -14,19 +14,7 @@ export async function POST(request: Request) {
     if (arquivo.size > 10 * 1024 * 1024) throw new Error("O arquivo excede o limite de 10 MB.");
     const previa = await interpretarEml(new Uint8Array(await arquivo.arrayBuffer()), arquivo.name);
     const dados = JSON.parse(String(form.get("dados") || "{}")) as Record<string, unknown>;
-    const revisado = aplicarRevisaoImportacao(previa.chamado, dados);
-    for (const campo of ["valor_base", "horas_incluidas", "valor_hora_adicional"] as const) {
-      if (revisado[campo] === "") revisado[campo] = null;
-      if (revisado[campo] !== null && !Number.isFinite(Number(revisado[campo]))) {
-        throw new Error(`Valor inválido no campo ${campo}.`);
-      }
-    }
-    if (revisado.data_agendada && !/^\d{4}-\d{2}-\d{2}$/.test(revisado.data_agendada)) {
-      throw new Error("Data agendada inválida.");
-    }
-    if (revisado.hora_agendada && !/^([01]\d|2[0-3]):[0-5]\d$/.test(revisado.hora_agendada)) {
-      throw new Error("Hora agendada inválida.");
-    }
+    const revisado = validarRevisaoImportacao(previa.chamado, dados);
     revisado.status = "Agendado";
     revisado.atualizado_em = new Date().toISOString();
     const id = await chamadosService.importar(revisado, arquivo.name);
