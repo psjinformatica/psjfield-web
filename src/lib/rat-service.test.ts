@@ -197,4 +197,26 @@ describe("RatService", () => {
     const cenario = criarCenario(); const rat = await cenario.service.gerarRat(1, revisaoClaro);
     await expect(cenario.service.baixar(2, rat.id)).rejects.toThrow("RAT não encontrada"); expect((await cenario.service.baixar(1, rat.id)).bytes).toEqual(new Uint8Array([7, 8, 9]));
   });
+
+  it("busca a versão e depois o chamado sequencialmente no download", async () => {
+    const cenario = criarCenario();
+    const rat = await cenario.service.gerarRat(1, revisaoClaro);
+    let liberarRat!: () => void;
+    const pausa = new Promise<void>((resolve) => { liberarRat = resolve; });
+    const buscarRat = vi.fn(async () => {
+      await pausa;
+      return rat;
+    });
+    const buscarChamado = vi.fn(async () => cenario.gateway.chamado);
+    cenario.gateway.buscarRat = buscarRat;
+    cenario.gateway.buscarChamado = buscarChamado;
+
+    const download = cenario.service.baixar(1, rat.id);
+    await Promise.resolve();
+    expect(buscarRat).toHaveBeenCalledOnce();
+    expect(buscarChamado).not.toHaveBeenCalled();
+    liberarRat();
+    await expect(download).resolves.toMatchObject({ rat, chamado: cenario.gateway.chamado });
+    expect(buscarChamado).toHaveBeenCalledOnce();
+  });
 });

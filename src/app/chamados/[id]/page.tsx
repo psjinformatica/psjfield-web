@@ -44,7 +44,7 @@ export default async function DetalheChamado({ params }: { params: Promise<{ id:
     const ratAtual = rats.find((rat) => rat.atual) || rats[0];
     return (
     <main className={`page-shell detail-page${encerrado ? " detail-page-closed" : ""}`}>
-      <MarcarChamadoAcessado id={chamado.id} />
+      {chamado.visualizado_em === null ? <MarcarChamadoAcessado id={chamado.id} /> : null}
       <Link className="back-link" href="/"><ArrowLeft size={18} /> Voltar aos chamados</Link>
       <header className="detail-header">
         <div>

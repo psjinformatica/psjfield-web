@@ -6,6 +6,7 @@ import type { Chamado } from "@/lib/types";
 const chamado = {
   id: 1, numero_chamado: "MI-100", status: "Concluído", data_agendada: "2026-07-31", hora_agendada: "09:00",
   visita_numero: 1, chamado_raiz_id: null,
+  visualizado_em: null,
   hora_inicio: "09:15", hora_termino: "10:30", cliente: "Claro", projeto: "", cidade: "Curitiba", estado: "PR",
   atividade: "Troca", valor_base: null, empresa_parceira: "", assunto_email: "", remetente: "", destinatario: "",
   data_email: "", usuario_responsavel: "login", contato: "Ana", telefone: "41999990000", endereco: "Rua A",

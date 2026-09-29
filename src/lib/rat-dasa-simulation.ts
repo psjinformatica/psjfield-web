@@ -7,6 +7,7 @@ export const chamadoSimulacaoRatDasa = {
   numero_chamado: "SR-855635",
   visita_numero: 1,
   chamado_raiz_id: null,
+  visualizado_em: null,
   status: "Em atendimento",
   data_agendada: "2026-09-15",
   hora_agendada: "09:00",

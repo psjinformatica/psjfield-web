@@ -21,7 +21,7 @@ export type ChamadoResumo = {
 
 export type Chamado = Omit<
   ChamadoResumo,
-  "visualizado_em" | "valor_financeiro" | "valor_card" | "pendencia_financeira"
+  "valor_financeiro" | "valor_card" | "pendencia_financeira"
 > & {
   empresa_parceira: string;
   assunto_email: string;
@@ -112,6 +112,7 @@ export type ChamadoImportacao = Omit<
   | "visita_numero"
   | "chamado_raiz_id"
   | "quantidade_visitas"
+  | "visualizado_em"
   | "hora_chegada"
   | "hora_inicio"
   | "hora_termino"

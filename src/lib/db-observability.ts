@@ -14,16 +14,41 @@ type DatabaseError = Error & {
 type Logger = Pick<Console, "info" | "warn" | "error">;
 
 type ActiveOperation = {
+  id: number;
   operation: string;
   requestId: string;
   route: string;
 };
 
+type WaitingOperation = ActiveOperation & {
+  now: () => number;
+  queuedAhead: number;
+  resolve: (slot: DatabaseOperationSlot) => void;
+};
+
+type DatabaseOperationSlot = {
+  acquiredAt: number;
+  queuedAhead: number;
+  release: () => void;
+};
+
+type DatabaseInstanceState = {
+  instanceId: string;
+  operationSequence: number;
+  activeOperations: Map<number, ActiveOperation>;
+  holder?: ActiveOperation;
+  waitingOperations: WaitingOperation[];
+};
+
 const requestContext = new AsyncLocalStorage<RequestContext>();
-const instanceState = {
+const globalObservability = globalThis as typeof globalThis & {
+  psjfieldDatabaseInstanceState?: DatabaseInstanceState;
+};
+const instanceState = globalObservability.psjfieldDatabaseInstanceState ??= {
   instanceId: "unconfigured",
   operationSequence: 0,
   activeOperations: new Map<number, ActiveOperation>(),
+  waitingOperations: [],
 };
 
 const transportErrorCodes = new Set([
@@ -61,7 +86,62 @@ function activeFields(currentRequestId?: string) {
     other_requests_active: currentRequestId
       ? new Set(active.filter((item) => item.requestId !== currentRequestId).map((item) => item.requestId)).size
       : new Set(active.map((item) => item.requestId)).size,
+    app_queue_waiting: instanceState.waitingOperations.length,
+    app_queue_holder: instanceState.holder?.operation ?? "none",
   };
+}
+
+function acquireDatabaseOperationSlot(
+  operation: ActiveOperation,
+  now: () => number,
+): Promise<DatabaseOperationSlot> {
+  const createSlot = (acquiredAt: number, queuedAhead: number): DatabaseOperationSlot => {
+    let released = false;
+    return {
+      acquiredAt,
+      queuedAhead,
+      release: () => {
+        if (released) return;
+        released = true;
+        if (instanceState.holder?.id !== operation.id) return;
+        const next = instanceState.waitingOperations.shift();
+        if (!next) {
+          instanceState.holder = undefined;
+          return;
+        }
+        instanceState.holder = next;
+        next.resolve(createWaitingSlot(next));
+      },
+    };
+  };
+  const createWaitingSlot = (waiting: WaitingOperation): DatabaseOperationSlot => {
+    let released = false;
+    return {
+      acquiredAt: waiting.now(),
+      queuedAhead: waiting.queuedAhead,
+      release: () => {
+        if (released) return;
+        released = true;
+        if (instanceState.holder?.id !== waiting.id) return;
+        const next = instanceState.waitingOperations.shift();
+        if (!next) {
+          instanceState.holder = undefined;
+          return;
+        }
+        instanceState.holder = next;
+        next.resolve(createWaitingSlot(next));
+      },
+    };
+  };
+
+  if (!instanceState.holder) {
+    instanceState.holder = operation;
+    return Promise.resolve(createSlot(now(), 0));
+  }
+  const queuedAhead = instanceState.waitingOperations.length + 1;
+  return new Promise((resolve) => {
+    instanceState.waitingOperations.push({ ...operation, now, queuedAhead, resolve });
+  });
 }
 
 export function observeDatabaseClientCreated(logger: Logger = console) {
@@ -126,13 +206,31 @@ export async function observeDatabaseOperation<T>(
   const now = options.now ?? Date.now;
   const context = requestContext.getStore() ?? { requestId: createRequestId(), route: "unscoped" };
   const requestedAt = now();
-  const activeBefore = instanceState.activeOperations.size;
   const operationId = ++instanceState.operationSequence;
-  instanceState.activeOperations.set(operationId, {
+  const operationContext = {
+    id: operationId,
     operation,
     requestId: context.requestId,
     route: context.route,
-  });
+  };
+  const holderBefore = instanceState.holder;
+  const waitingBefore = instanceState.waitingOperations.length;
+  if (holderBefore && observabilityEnabled()) {
+    logLine(logger, "info", "DB_APP_QUEUE_WAIT", {
+      instance: instanceState.instanceId,
+      req: context.requestId,
+      route: context.route,
+      op: operation,
+      app_queue_waiting: waitingBefore + 1,
+      occupied_by: holderBefore.operation,
+      occupied_by_req: holderBefore.requestId,
+      at: new Date().toISOString(),
+    });
+  }
+  const slot = await acquireDatabaseOperationSlot(operationContext, now);
+  const acquiredAt = slot.acquiredAt;
+  const appQueueWaitMs = Math.max(0, acquiredAt - requestedAt);
+  instanceState.activeOperations.set(operationId, operationContext);
   let slowTimer: ReturnType<typeof setTimeout> | undefined;
 
   const scheduleWarning = (delayMs: number, marker: "DB_SLOW" | "DB_VERY_SLOW" | "DB_STALLED", next?: () => void) => {
@@ -142,9 +240,10 @@ export async function observeDatabaseOperation<T>(
         req: context.requestId,
         route: context.route,
         op: operation,
-        duration: `${Math.max(0, now() - requestedAt)}ms`,
-        status: "waiting",
-        concurrent_at_start: activeBefore,
+        duration: `${Math.max(0, now() - acquiredAt)}ms`,
+        total_duration: `${Math.max(0, now() - requestedAt)}ms`,
+        app_queue_wait_ms: `${appQueueWaitMs}ms`,
+        status: "executing",
         driver_dispatch: "unavailable",
         ...activeFields(context.requestId),
         at: new Date().toISOString(),
@@ -158,14 +257,30 @@ export async function observeDatabaseOperation<T>(
     scheduleWarning(4_000, "DB_VERY_SLOW", () =>
       scheduleWarning(25_000, "DB_STALLED")));
 
+  if (slot.queuedAhead > 0 && observabilityEnabled()) {
+    logLine(logger, "info", "DB_APP_QUEUE_ACQUIRED", {
+      instance: instanceState.instanceId,
+      req: context.requestId,
+      route: context.route,
+      op: operation,
+      app_queue_wait_ms: `${appQueueWaitMs}ms`,
+      queued_ahead: slot.queuedAhead,
+      acquired_at: new Date(acquiredAt).toISOString(),
+      ...activeFields(context.requestId),
+      at: new Date().toISOString(),
+    });
+  }
+
   if (observabilityEnabled()) {
     logLine(logger, "info", "DB_START", {
       instance: instanceState.instanceId,
       req: context.requestId,
       route: context.route,
       op: operation,
-      requested_at: new Date().toISOString(),
-      queued_estimate: activeBefore,
+      requested_at: new Date(requestedAt).toISOString(),
+      acquired_at: new Date(acquiredAt).toISOString(),
+      app_queue_wait_ms: `${appQueueWaitMs}ms`,
+      queued_estimate: slot.queuedAhead,
       driver_dispatch: "unavailable",
       ...activeFields(context.requestId),
       at: new Date().toISOString(),
@@ -174,7 +289,9 @@ export async function observeDatabaseOperation<T>(
 
   try {
     const result = await callback();
-    const durationMs = Math.max(0, now() - requestedAt);
+    const completedAt = now();
+    const durationMs = Math.max(0, completedAt - acquiredAt);
+    const totalDurationMs = Math.max(0, completedAt - requestedAt);
     const marker = classifyDatabaseDuration(durationMs);
     if (observabilityEnabled() || marker !== "DB") {
       logLine(logger, marker === "DB" ? "info" : "warn", marker, {
@@ -183,17 +300,20 @@ export async function observeDatabaseOperation<T>(
         route: context.route,
         op: operation,
         duration: `${durationMs}ms`,
+        total_duration: `${totalDurationMs}ms`,
+        app_queue_wait_ms: `${appQueueWaitMs}ms`,
         status: "ok",
-        concurrent_at_start: activeBefore,
         driver_dispatch: "unavailable",
         ...activeFields(context.requestId),
-        completed_at: new Date().toISOString(),
+        completed_at: new Date(completedAt).toISOString(),
         at: new Date().toISOString(),
       });
     }
     return result;
   } catch (error) {
-    const durationMs = Math.max(0, now() - requestedAt);
+    const completedAt = now();
+    const durationMs = Math.max(0, completedAt - acquiredAt);
+    const totalDurationMs = Math.max(0, completedAt - requestedAt);
     const databaseError = (error instanceof Error ? error : new Error(String(error))) as DatabaseError;
     const transportEvent = databaseError.code && transportErrorCodes.has(databaseError.code)
       ? databaseError.code
@@ -204,13 +324,14 @@ export async function observeDatabaseOperation<T>(
       route: context.route,
       op: operation,
       duration: `${durationMs}ms`,
+      total_duration: `${totalDurationMs}ms`,
+      app_queue_wait_ms: `${appQueueWaitMs}ms`,
       status: "error",
       code: databaseError.code,
       severity: databaseError.severity,
       timeout: databaseError.code === "57014" || /statement timeout|lock timeout/i.test(databaseError.message),
       transport_event: transportEvent,
       message: sanitizeDatabaseMessage(databaseError.message),
-      concurrent_at_start: activeBefore,
       driver_dispatch: "unavailable",
       ...activeFields(context.requestId),
       at: new Date().toISOString(),
@@ -219,6 +340,7 @@ export async function observeDatabaseOperation<T>(
   } finally {
     if (slowTimer) clearTimeout(slowTimer);
     instanceState.activeOperations.delete(operationId);
+    slot.release();
   }
 }
 

@@ -24,8 +24,10 @@ describe("persistência global da visualização de chamados", () => {
       "utf8",
     );
     const actions = await readFile(new URL("../app/actions.ts", import.meta.url), "utf8");
+    const detalhe = await readFile(new URL("../app/chamados/[id]/page.tsx", import.meta.url), "utf8");
     expect(marcador).toMatch(/useEffect\(\(\) => \{[\s\S]*marcarChamadoVisualizadoAction\(id\)/);
     expect(actions).toMatch(/marcarVisualizado\(id\)[\s\S]*revalidatePath\("\/"\)/);
+    expect(detalhe).toMatch(/chamado\.visualizado_em === null \? <MarcarChamadoAcessado/);
   });
 
   it("não usa clique nem armazenamento local como fonte de verdade", async () => {

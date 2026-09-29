@@ -116,10 +116,8 @@ export class RatService {
 
   async baixar(chamadoId: number, ratId: string) {
     this.validarId(chamadoId);
-    const [rat, chamado] = await Promise.all([
-      this.gateway.buscarRat(ratId, chamadoId),
-      this.gateway.buscarChamado(chamadoId),
-    ]);
+    const rat = await this.gateway.buscarRat(ratId, chamadoId);
+    const chamado = await this.gateway.buscarChamado(chamadoId);
     if (!rat || !chamado) throw new Error("RAT não encontrada.");
     return { rat, chamado, bytes: await this.storage.baixarPdf(rat.caminho_pdf) };
   }

@@ -101,7 +101,7 @@ export async function buscarChamado(id: number): Promise<Chamado | null> {
            remetente, destinatario, data_email, data_agendada, hora_agendada,
            usuario_responsavel, contato, telefone, unidade_nome, endereco, cidade, estado,
            atividade, descricao, equipamento, fabricante, modelo, patrimonio_ae,
-           numero_serie, valor_base, horas_incluidas, valor_hora_adicional,
+           numero_serie, valor_base, horas_incluidas, valor_hora_adicional, visualizado_em,
            status, observacoes, hora_chegada, hora_inicio, hora_termino,
            descricao_servico, observacoes_atendimento
     FROM chamados WHERE id = ${id}
@@ -367,15 +367,17 @@ export async function criarNovaVisita(
 }
 
 export async function buscarPorHash(hash: string) {
-  const sql = getSql();
-  const linhas = await sql<ChamadoDuplicado[]>`
+  return observeDatabaseOperation("importacao.buscarPorHash", async () => {
+    const sql = getSql();
+    const linhas = await sql<ChamadoDuplicado[]>`
     SELECT e.chamado_id, c.numero_chamado, c.cliente, c.cidade, c.estado,
            e.importado_em
     FROM emails_importados e
     JOIN chamados c ON c.id = e.chamado_id
     WHERE e.hash_email = ${hash}
   `;
-  return linhas[0] ? { ...linhas[0], chamado_id: Number(linhas[0].chamado_id) } : null;
+    return linhas[0] ? { ...linhas[0], chamado_id: Number(linhas[0].chamado_id) } : null;
+  });
 }
 
 const colunasImportacao = [
@@ -388,8 +390,9 @@ const colunasImportacao = [
 ] as const;
 
 export async function importarChamado(chamado: ChamadoImportacao, nomeArquivo: string) {
-  const sql = getSql();
-  return sql.begin(async (transacao) => {
+  return observeDatabaseOperation("importacao.confirmar", async () => {
+    const sql = getSql();
+    return sql.begin(async (transacao) => {
     const duplicados = await transacao<{ chamado_id: number }[]>`
       SELECT chamado_id FROM emails_importados WHERE hash_email = ${chamado.hash_email}
     `;
@@ -407,12 +410,14 @@ export async function importarChamado(chamado: ChamadoImportacao, nomeArquivo: s
         (${chamado.hash_email}, ${id}, ${nomeArquivo}, '', ${chamado.criado_em})
     `;
     return Number(id);
+    });
   });
 }
 
 export async function excluirChamado(id: number) {
-  const sql = getSql();
-  return sql.begin(async (transacao) => {
+  return observeDatabaseOperation("chamados.excluir", async () => {
+    const sql = getSql();
+    return sql.begin(async (transacao) => {
     const chamados = await transacao<{ id: number; hash_email: string; visita_numero: number }[]>`
       SELECT id, hash_email, visita_numero FROM chamados WHERE id = ${id} FOR UPDATE
     `;
@@ -431,5 +436,6 @@ export async function excluirChamado(id: number) {
       RETURNING id
     `;
     if (removidos.count !== 1) throw new Error("Não foi possível excluir o chamado.");
+    });
   });
 }

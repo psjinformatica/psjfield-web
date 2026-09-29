@@ -15,7 +15,8 @@ export default async function VisualizarRat({ params }: { params: Promise<{ id: 
   const chamadoId = Number(id);
   if (!Number.isSafeInteger(chamadoId)) notFound();
   return observeRequest(`/chamados/${chamadoId}/rat/${ratId}`, async () => {
-    const [chamado, versoes] = await Promise.all([chamadosService.buscar(chamadoId), ratService.listar(chamadoId)]);
+    const chamado = await chamadosService.buscar(chamadoId);
+    const versoes = await ratService.listar(chamadoId);
     const rat = versoes.find((item) => item.id === ratId);
     if (!chamado || !rat) notFound();
     const arquivoUrl = `/api/chamados/${chamadoId}/rat/${ratId}/arquivo`;

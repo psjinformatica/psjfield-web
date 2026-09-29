@@ -9,6 +9,7 @@ const dependencias = vi.hoisted(() => ({
   buscarCliente: vi.fn(),
   buscarTecnico: vi.fn(),
   listarRats: vi.fn(),
+  marcarAcessado: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({ notFound: () => { throw new Error("not-found"); } }));
@@ -32,7 +33,12 @@ vi.mock("@/components/atendimento-form", () => ({ AtendimentoForm: () => null })
 vi.mock("@/components/agendar-nova-visita", () => ({ AgendarNovaVisita: () => null }));
 vi.mock("@/components/assinaturas-atendimento", () => ({ AssinaturasAtendimento: () => null }));
 vi.mock("@/components/excluir-chamado", () => ({ ExcluirChamado: () => null }));
-vi.mock("@/components/marcar-chamado-acessado", () => ({ MarcarChamadoAcessado: () => null }));
+vi.mock("@/components/marcar-chamado-acessado", () => ({
+  MarcarChamadoAcessado: ({ id }: { id: number }) => {
+    dependencias.marcarAcessado(id);
+    return null;
+  },
+}));
 vi.mock("@/components/chamado-visitas", () => ({ ChamadoVisitas: () => null }));
 vi.mock("@/components/rat-arquivo-acoes", () => ({ RatArquivoAcoes: () => null }));
 
@@ -99,5 +105,27 @@ describe("detalhe do chamado", () => {
     const html = renderToStaticMarkup(pagina);
 
     expect(html).toContain("Unidade informada pelo cliente");
+  });
+
+  it("não dispara escrita de visualização quando o chamado já foi visualizado", async () => {
+    dependencias.buscarChamado.mockResolvedValue({
+      ...chamadoDasaSeguro,
+      visualizado_em: "2026-09-29T13:00:00.000Z",
+    });
+
+    const pagina = await DetalheChamado({ params: Promise.resolve({ id: "20" }) });
+    renderToStaticMarkup(pagina);
+
+    expect(dependencias.marcarAcessado).not.toHaveBeenCalled();
+  });
+
+  it("mantém a primeira marcação quando visualizado_em é nulo", async () => {
+    dependencias.buscarChamado.mockResolvedValue({ ...chamadoDasaSeguro, visualizado_em: null });
+
+    const pagina = await DetalheChamado({ params: Promise.resolve({ id: "20" }) });
+    renderToStaticMarkup(pagina);
+
+    expect(dependencias.marcarAcessado).toHaveBeenCalledOnce();
+    expect(dependencias.marcarAcessado).toHaveBeenCalledWith(20);
   });
 });

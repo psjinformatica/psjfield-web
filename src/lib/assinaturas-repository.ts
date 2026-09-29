@@ -18,8 +18,9 @@ export async function buscarAssinaturaCliente(chamadoId: number) {
 }
 
 export async function salvarAssinaturaCliente(assinatura: AssinaturaCliente) {
-  const sql = getSql();
-  await sql`
+  return observeDatabaseOperation("assinaturas.salvarCliente", async () => {
+    const sql = getSql();
+    await sql`
     INSERT INTO assinaturas_cliente
       (chamado_id, nome_responsavel, documento_responsavel, caminho_assinatura,
        assinado_em, atualizado_em)
@@ -34,6 +35,7 @@ export async function salvarAssinaturaCliente(assinatura: AssinaturaCliente) {
       assinado_em = EXCLUDED.assinado_em,
       atualizado_em = EXCLUDED.atualizado_em
   `;
+  });
 }
 
 export async function buscarAssinaturaTecnico() {
@@ -49,8 +51,9 @@ export async function buscarAssinaturaTecnico() {
 }
 
 export async function salvarAssinaturaTecnico(assinatura: AssinaturaTecnico) {
-  const sql = getSql();
-  await sql`
+  return observeDatabaseOperation("assinaturas.salvarTecnico", async () => {
+    const sql = getSql();
+    await sql`
     INSERT INTO assinatura_tecnico (id, nome_tecnico, caminho_assinatura, atualizado_em)
     VALUES (${assinatura.id}, ${assinatura.nome_tecnico}, ${assinatura.caminho_assinatura},
             ${assinatura.atualizado_em})
@@ -59,12 +62,15 @@ export async function salvarAssinaturaTecnico(assinatura: AssinaturaTecnico) {
       caminho_assinatura = EXCLUDED.caminho_assinatura,
       atualizado_em = EXCLUDED.atualizado_em
   `;
+  });
 }
 
 export async function registrarPendenciaStorage(caminho: string, motivo: string) {
-  const sql = getSql();
-  await sql`
+  return observeDatabaseOperation("storage.registrarPendencia", async () => {
+    const sql = getSql();
+    await sql`
     INSERT INTO pendencias_storage (bucket, caminho, motivo)
     VALUES ('assinaturas', ${caminho}, ${motivo})
   `;
+  });
 }
