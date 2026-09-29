@@ -11,6 +11,7 @@ import type {
   NovaVisitaCriada,
   NovaVisitaInput,
   ReaberturaInput,
+  VisitaResumo,
 } from "@/lib/types";
 import { resolverModeloRat } from "@/lib/rat-models";
 import { validarAtendimento, validarFinalizacao, validarNovaVisita, validarReabertura } from "@/lib/validation";
@@ -18,6 +19,7 @@ import { validarAtendimento, validarFinalizacao, validarNovaVisita, validarReabe
 export interface ChamadosGateway {
   listar(): Promise<ChamadoResumo[]>;
   buscar(id: number): Promise<Chamado | null>;
+  listarVisitas(id: number): Promise<VisitaResumo[]>;
   marcarVisualizado(id: number): Promise<boolean>;
   atualizar(id: number, dados: AtendimentoInput): Promise<AtendimentoAtualizado>;
   finalizar(id: number, dados: FinalizacaoInput): Promise<ChamadoFinalizado>;
@@ -38,6 +40,11 @@ export class ChamadosService {
   buscar(id: number) {
     if (!Number.isSafeInteger(id) || id <= 0) throw new Error("Chamado inválido.");
     return this.gateway.buscar(id);
+  }
+
+  listarVisitas(id: number) {
+    if (!Number.isSafeInteger(id) || id <= 0) throw new Error("Chamado inválido.");
+    return this.gateway.listarVisitas(id);
   }
 
   marcarVisualizado(id: number) {

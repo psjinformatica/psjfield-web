@@ -6,9 +6,16 @@ import { CalendarDays } from "lucide-react";
 
 import { formatarData, formatarMoeda } from "@/lib/format";
 import type { ContaReceber } from "@/lib/financeiro-types";
+import { exibirIdentificacaoVisita, rotuloVisita } from "@/lib/chamados-visitas";
 
 export function filtrarContasFinanceiro(contas: ContaReceber[], filtro: string) {
   return contas.filter((conta) => filtro === "TODOS" || conta.situacao === filtro);
+}
+
+export function identificacaoVisitaFinanceiro(conta: Pick<ContaReceber, "visita_numero" | "quantidade_visitas">) {
+  return exibirIdentificacaoVisita(conta.quantidade_visitas)
+    ? rotuloVisita(conta.visita_numero ?? 1)
+    : null;
 }
 
 export function indicadoresContaFinanceiro(conta: ContaReceber) {
@@ -74,8 +81,10 @@ export function FinanceiroLista({ contas }: { contas: ContaReceber[] }) {
     </div>
     {erro && <p className="feedback error" role="alert">{erro}</p>}
     <div className="finance-grid">
-      {filtradas.map((conta) => <article className="finance-card" key={conta.id}>
-        <div className="finance-card-head"><div><span>Chamado</span><strong>{conta.numero_chamado}</strong></div><span className={`finance-status finance-${conta.situacao.toLowerCase()}`}>{conta.rotulo_situacao}</span></div>
+      {filtradas.map((conta) => {
+        const visita = identificacaoVisitaFinanceiro(conta);
+        return <article className="finance-card" key={conta.id}>
+        <div className="finance-card-head"><div><span>Chamado</span><strong>{conta.numero_chamado}</strong>{visita ? <small>{visita}</small> : null}</div><span className={`finance-status finance-${conta.situacao.toLowerCase()}`}>{conta.rotulo_situacao}</span></div>
         <dl>{indicadoresContaFinanceiro(conta).map((indicador) => (
           <div key={indicador.rotulo}><dt>{indicador.rotulo}</dt><dd>{indicador.valor}</dd></div>
         ))}</dl>
@@ -85,7 +94,8 @@ export function FinanceiroLista({ contas }: { contas: ContaReceber[] }) {
           <label>Valor recebido<span className="currency-input"><span>R$</span><input defaultValue={conta.valor_total} min="0.01" name="valor_recebido" step="0.01" type="number" required /></span></label>
           <button className="primary-button" disabled={pendente === conta.id}>Marcar como recebido</button>
         </form>}
-      </article>)}
+      </article>;
+      })}
     </div>
   </>;
 }

@@ -75,6 +75,23 @@ class GatewayMemoria implements ChamadosGateway {
     if (this.falhar) throw new Error("Banco indisponível");
     return this.registros.get(id) || null;
   }
+  async listarVisitas(id: number) {
+    const fonte = this.registros.get(id);
+    if (!fonte) return [];
+    const raiz = fonte.chamado_raiz_id ?? fonte.id;
+    return [...this.registros.values()]
+      .filter((registro) => registro.id === raiz || registro.chamado_raiz_id === raiz)
+      .sort((a, b) => a.visita_numero - b.visita_numero)
+      .map((registro) => ({
+        id: registro.id,
+        visita_numero: registro.visita_numero,
+        status: registro.status,
+        data_agendada: registro.data_agendada,
+        hora_agendada: registro.hora_agendada,
+        unidade_nome: registro.unidade_nome,
+        quantidade_rats: 0,
+      }));
+  }
   async marcarVisualizado(id: number) {
     if (this.falhar) throw new Error("Banco indisponível");
     const atual = this.registros.get(id);
@@ -382,6 +399,44 @@ describe("ChamadosService", () => {
       observacoes_atendimento: "",
     });
     expect(await service.buscarHash("hash-1")).toMatchObject({ chamado_id: id });
+  });
+
+  it("cria Visita 3 a partir da Visita 2 apontando diretamente para a raiz", async () => {
+    const gateway = new GatewayMemoria();
+    const service = new ChamadosService(gateway);
+    const raiz = await service.importar({ ...importacao(), cliente: "DASA", unidade_nome: "Unidade Raiz" }, "dasa.eml");
+    gateway.registros.set(raiz, { ...(await service.buscar(raiz))!, status: "Improdutivo" });
+    const visita2 = await service.criarVisita(raiz, {
+      data_agendada: "2026-09-29", hora_agendada: "09:30", unidade_nome: "Unidade 2",
+    });
+    gateway.registros.set(visita2.id, { ...(await service.buscar(visita2.id))!, status: "Concluído" });
+    const visita3 = await service.criarVisita(visita2.id, {
+      data_agendada: "2026-10-01", hora_agendada: "10:00", unidade_nome: "Unidade 3",
+    });
+
+    expect(visita3.visita_numero).toBe(3);
+    expect(await service.buscar(visita3.id)).toMatchObject({ chamado_raiz_id: raiz, visita_numero: 3 });
+    expect((await service.listarVisitas(visita2.id)).map(({ visita_numero }) => visita_numero)).toEqual([1, 2, 3]);
+  });
+
+  it("inicia, finaliza e reabre somente a visita informada", async () => {
+    const gateway = new GatewayMemoria();
+    const service = new ChamadosService(gateway);
+    const raiz = await service.importar({ ...importacao(), cliente: "DASA", unidade_nome: "Unidade" }, "dasa.eml");
+    gateway.registros.set(raiz, { ...(await service.buscar(raiz))!, status: "Improdutivo", hora_inicio: "08:00", hora_termino: "08:30" });
+    const visita2 = await service.criarVisita(raiz, {
+      data_agendada: "2026-09-29", hora_agendada: "09:30", unidade_nome: "Unidade",
+    });
+
+    await service.atualizar(visita2.id, {
+      hora_chegada: "09:20", hora_inicio: "09:30", hora_termino: "", descricao_servico: "Visita 2", observacoes_atendimento: "", confirmar_alteracao_hora_inicio: false,
+    });
+    await service.finalizar(visita2.id, { status: "Concluído", motivo: "" });
+    await service.reabrir(visita2.id, { motivo: "Correção da visita 2" });
+
+    expect(await service.buscar(raiz)).toMatchObject({ status: "Improdutivo", hora_inicio: "08:00", hora_termino: "08:30" });
+    expect(await service.buscar(visita2.id)).toMatchObject({ status: "Em atendimento", hora_inicio: "09:30", descricao_servico: "Visita 2" });
+    expect(gateway.reaberturas).toEqual([{ chamado_id: visita2.id, status_anterior: "Concluído", motivo: "Correção da visita 2" }]);
   });
 
   it("exige unidade e restringe nova visita a DASA encerrado", async () => {

@@ -8,6 +8,7 @@ import type { ChamadoResumo } from "@/lib/types";
 import { STATUS_OPERACIONAIS } from "@/lib/status";
 import { filtrarChamados } from "@/lib/chamados-filter";
 import { resolverModeloRat } from "@/lib/rat-models";
+import { exibirIdentificacaoVisita, rotuloVisita } from "@/lib/chamados-visitas";
 
 const statusDisponiveis = ["Todos", ...STATUS_OPERACIONAIS];
 
@@ -66,14 +67,16 @@ export function ChamadosLista({ chamados }: { chamados: ChamadoResumo[] }) {
               </div>
               <h3>{chamado.numero_chamado || `Chamado ${chamado.id}`}</h3>
               <p className="client-name">
-                {chamado.visita_numero > 1 && resolverModeloRat({ cliente: chamado.cliente }) === "dasa-v1"
+                {resolverModeloRat({ cliente: chamado.cliente }) === "dasa-v1"
                   ? "DASA"
                   : chamado.cliente || "Cliente não informado"}
-                {chamado.visita_numero > 1 ? ` • Visita ${chamado.visita_numero}` : ""}
+                {exibirIdentificacaoVisita(chamado.quantidade_visitas)
+                  ? ` • ${rotuloVisita(chamado.visita_numero)}`
+                  : ""}
               </p>
               <div className="card-meta">
                 <span><CalendarDays size={16} />{
-                  (chamado.visita_numero > 1
+                  (exibirIdentificacaoVisita(chamado.quantidade_visitas)
                     ? formatarData(chamado.data_agendada)
                     : formatarDataRelativa(chamado.data_agendada)) || "Sem data"
                 } · {chamado.hora_agendada || "--:--"}</span>

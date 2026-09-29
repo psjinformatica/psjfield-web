@@ -16,6 +16,17 @@ describe("persistência de visitas", () => {
     const insercao = criacao.slice(criacao.indexOf("INSERT INTO chamados"));
     expect(insercao).not.toContain("hora_inicio");
     expect(insercao).not.toContain("descricao_servico,");
+    expect(insercao).toContain("WHERE id = ${raizId}");
+  });
+
+  it("lista a raiz e todas as derivadas em ordem, sem misturar RATs", async () => {
+    const fonte = await readFile(new URL("./repository.ts", import.meta.url), "utf8");
+    const inicio = fonte.indexOf("export async function listarVisitasChamado");
+    const fim = fonte.indexOf("export async function marcarChamadoVisualizado");
+    const listagem = fonte.slice(inicio, fim);
+    expect(listagem).toContain("obterChamadoRaizId");
+    expect(listagem).toContain("r.chamado_id = c.id");
+    expect(listagem).toContain("ORDER BY c.visita_numero ASC");
   });
 
   it("só remove o vínculo de e-mail da visita original", async () => {

@@ -13,6 +13,7 @@ function chamado(
     numero_chamado: "SR-855635",
     visita_numero: 1,
     chamado_raiz_id: null,
+    quantidade_visitas: 1,
     status: "Agendado",
     data_agendada: "2026-09-15",
     hora_agendada: "09:00",
@@ -72,6 +73,7 @@ describe("ChamadosLista", () => {
       cliente: "DASA Chamado para atendimento",
       visita_numero: 2,
       chamado_raiz_id: 24,
+      quantidade_visitas: 2,
       data_agendada: "2026-09-29",
       hora_agendada: "09:30",
     })]} />);
@@ -79,5 +81,14 @@ describe("ChamadosLista", () => {
     expect(html).toContain("DASA • Visita 2");
     expect(html).toContain("29/09/2026");
     expect(html).toContain("09:30");
+  });
+
+  it("identifica também a Visita 1 quando o chamado possui múltiplas ocorrências", () => {
+    const html = renderToStaticMarkup(<ChamadosLista chamados={[chamado(null, {
+      numero_chamado: "SR-906366",
+      cliente: "DASA Chamado para atendimento",
+      quantidade_visitas: 2,
+    })]} />);
+    expect(html).toContain("DASA • Visita 1");
   });
 });

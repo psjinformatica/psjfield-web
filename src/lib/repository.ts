@@ -15,12 +15,14 @@ import type {
   ReaberturaInput,
   NovaVisitaCriada,
   NovaVisitaInput,
+  VisitaResumo,
 } from "@/lib/types";
 import { resolverModeloRat } from "@/lib/rat-models";
 import { horarioAtualSaoPaulo, statusEncerraAtendimento, statusGeraRecebimento } from "@/lib/status";
 import { colocarContaEmRevisao, registrarContaAutomatica } from "@/lib/financeiro-repository";
 import { ordenarChamados, type ChamadoOrdenavel } from "@/lib/chamados-order";
 import { resolverValorCardChamado } from "@/lib/chamados-valor";
+import { obterChamadoRaizId } from "@/lib/chamados-visitas";
 
 type ChamadoLinhaListagem = Omit<
   ChamadoResumo,
@@ -62,8 +64,20 @@ export async function listarChamados(): Promise<ChamadoResumo[]> {
              END DESC NULLS LAST,
              c.id DESC
   `;
+    const quantidades = new Map<number, number>();
+    for (const linha of linhas) {
+      const raizId = obterChamadoRaizId({
+        id: Number(linha.id),
+        chamado_raiz_id: linha.chamado_raiz_id === null ? null : Number(linha.chamado_raiz_id),
+      });
+      quantidades.set(raizId, (quantidades.get(raizId) ?? 0) + 1);
+    }
     return ordenarChamados(linhas).map((linha) => {
       const { encerrado_em, atualizado_em, ...resumo } = linha;
+      const raizId = obterChamadoRaizId({
+        id: Number(resumo.id),
+        chamado_raiz_id: resumo.chamado_raiz_id === null ? null : Number(resumo.chamado_raiz_id),
+      });
       void encerrado_em;
       void atualizado_em;
       return {
@@ -71,6 +85,7 @@ export async function listarChamados(): Promise<ChamadoResumo[]> {
         ...resolverValorCardChamado(resumo),
         id: Number(resumo.id),
         visita_numero: Number(resumo.visita_numero),
+        quantidade_visitas: quantidades.get(raizId) ?? 1,
         chamado_raiz_id: resumo.chamado_raiz_id === null ? null : Number(resumo.chamado_raiz_id),
       };
     });
@@ -97,6 +112,35 @@ export async function buscarChamado(id: number): Promise<Chamado | null> {
       visita_numero: Number(linhas[0].visita_numero),
       chamado_raiz_id: linhas[0].chamado_raiz_id === null ? null : Number(linhas[0].chamado_raiz_id),
     } : null;
+  });
+}
+
+export async function listarVisitasChamado(id: number): Promise<VisitaResumo[]> {
+  return observeDatabaseOperation("chamados.listarVisitas", async () => {
+    const sql = getSql();
+    const referencias = await sql<{ id: number; chamado_raiz_id: number | null }[]>`
+      SELECT id, chamado_raiz_id FROM chamados WHERE id = ${id}
+    `;
+    if (!referencias[0]) return [];
+    const raizId = obterChamadoRaizId({
+      id: Number(referencias[0].id),
+      chamado_raiz_id: referencias[0].chamado_raiz_id === null ? null : Number(referencias[0].chamado_raiz_id),
+    });
+    const visitas = await sql<VisitaResumo[]>`
+      SELECT c.id, c.visita_numero, c.status, c.data_agendada, c.hora_agendada,
+             c.unidade_nome, COUNT(r.id)::int AS quantidade_rats
+      FROM chamados c
+      LEFT JOIN rats r ON r.chamado_id = c.id
+      WHERE c.id = ${raizId} OR c.chamado_raiz_id = ${raizId}
+      GROUP BY c.id
+      ORDER BY c.visita_numero ASC
+    `;
+    return visitas.map((visita) => ({
+      ...visita,
+      id: Number(visita.id),
+      visita_numero: Number(visita.visita_numero),
+      quantidade_rats: Number(visita.quantidade_rats),
+    }));
   });
 }
 
@@ -260,7 +304,10 @@ export async function criarNovaVisita(
       `;
       const referencia = referencias[0];
       if (!referencia) throw new Error("Chamado não encontrado.");
-      const raizId = Number(referencia.chamado_raiz_id ?? referencia.id);
+      const raizId = obterChamadoRaizId({
+        id: Number(referencia.id),
+        chamado_raiz_id: referencia.chamado_raiz_id === null ? null : Number(referencia.chamado_raiz_id),
+      });
       await transacao`SELECT id FROM chamados WHERE id = ${raizId} FOR UPDATE`;
 
       const fontes = await transacao<Chamado[]>`
@@ -311,7 +358,7 @@ export async function criarNovaVisita(
           numero_serie, valor_base, horas_incluidas, valor_hora_adicional,
           'Agendado', observacoes, caminho_email, hash_email, corpo_email, ${agora}, ${agora}
         FROM chamados
-        WHERE id = ${chamadoId}
+        WHERE id = ${raizId}
         RETURNING id
       `;
       return { id: Number(inseridas[0].id), visita_numero: visitaNumero };

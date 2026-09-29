@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   filtrarContasFinanceiro,
+  identificacaoVisitaFinanceiro,
   indicadoresContaFinanceiro,
 } from "@/components/financeiro-lista";
 import type { ContaReceber } from "@/lib/financeiro-types";
@@ -11,6 +12,8 @@ function conta(situacao: ContaReceber["situacao"], id = "conta-1"): ContaReceber
     id,
     chamado_id: 1,
     numero_chamado: "MI-100",
+    visita_numero: 1,
+    quantidade_visitas: 1,
     encerrado_em: "2026-09-10T15:00:00.000Z",
     hora_inicio_snapshot: "09:00",
     hora_fim_snapshot: "12:20",
@@ -62,5 +65,11 @@ describe("indicadores dos cards financeiros", () => {
     expect(filtrarContasFinanceiro(contas, "A_RECEBER").map(({ id }) => id)).toEqual(["1"]);
     expect(filtrarContasFinanceiro(contas, "RECEBIDO").map(({ id }) => id)).toEqual(["2"]);
     expect(filtrarContasFinanceiro(contas, "EM_REVISAO").map(({ id }) => id)).toEqual(["3"]);
+  });
+
+  it("distingue recebíveis do mesmo chamado externo por visita", () => {
+    expect(identificacaoVisitaFinanceiro({ visita_numero: 1, quantidade_visitas: 2 })).toBe("Visita 1");
+    expect(identificacaoVisitaFinanceiro({ visita_numero: 2, quantidade_visitas: 2 })).toBe("Visita 2");
+    expect(identificacaoVisitaFinanceiro({ visita_numero: 1, quantidade_visitas: 1 })).toBeNull();
   });
 });

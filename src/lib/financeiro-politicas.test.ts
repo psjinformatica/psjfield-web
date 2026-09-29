@@ -58,6 +58,18 @@ describe("políticas financeiras por cliente", () => {
     });
   });
 
+  it("aplica a política DASA ao alias preservado nas visitas derivadas", () => {
+    expect(prepararRecebivelAutomatico(
+      "DASA Chamado para atendimento",
+      "2026-09-29",
+      "09:30",
+      "12:50",
+    )).toMatchObject({
+      previsao_recebimento: "2026-10-15",
+      calculo: { valor_total: 130 },
+    });
+  });
+
   it.each(["Claro", "DASA"])("aplica a política de preço compartilhada para %s", (cliente) => {
     for (const [inicio, fim, duracao, adicionais, total] of [
       ["09:00", "09:10", 10, 0, 100],

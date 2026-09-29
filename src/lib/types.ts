@@ -3,6 +3,7 @@ export type ChamadoResumo = {
   numero_chamado: string;
   visita_numero: number;
   chamado_raiz_id: number | null;
+  quantidade_visitas?: number;
   status: string;
   data_agendada: string;
   hora_agendada: string;
@@ -95,11 +96,22 @@ export type NovaVisitaCriada = {
   visita_numero: number;
 };
 
+export type VisitaResumo = {
+  id: number;
+  visita_numero: number;
+  status: string;
+  data_agendada: string;
+  hora_agendada: string;
+  unidade_nome: string | null;
+  quantidade_rats: number;
+};
+
 export type ChamadoImportacao = Omit<
   Chamado,
   | "id"
   | "visita_numero"
   | "chamado_raiz_id"
+  | "quantidade_visitas"
   | "hora_chegada"
   | "hora_inicio"
   | "hora_termino"

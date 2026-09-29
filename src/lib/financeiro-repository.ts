@@ -74,6 +74,9 @@ export async function listarContasReceber(): Promise<ContaReceber[]> {
     const sql = getSql();
     const linhas = await sql<ContaReceber[]>`
     SELECT cr.id, cr.chamado_id, cr.numero_chamado_snapshot AS numero_chamado,
+           c.visita_numero,
+           (SELECT COUNT(*)::int FROM chamados visita
+            WHERE visita.id = raiz.id OR visita.chamado_raiz_id = raiz.id) AS quantidade_visitas,
            cr.encerrado_em, cr.hora_inicio_snapshot, cr.hora_fim_snapshot,
            cr.duracao_minutos, cr.horas_adicionais, cr.valor_base,
            cr.valor_hora_adicional, cr.valor_adicional, cr.valor_total,
@@ -94,11 +97,18 @@ export async function listarContasReceber(): Promise<ContaReceber[]> {
              ELSE 'A receber'
            END AS rotulo_situacao
     FROM contas_receber cr
+    JOIN chamados c ON c.id = cr.chamado_id
+    CROSS JOIN LATERAL (SELECT COALESCE(c.chamado_raiz_id, c.id) AS id) raiz
     ORDER BY ((cr.encerrado_em AT TIME ZONE 'America/Sao_Paulo')::date + cr.prazo_dias) ASC NULLS LAST,
              cr.encerrado_em ASC NULLS LAST,
              cr.numero_chamado_snapshot ASC
   `;
-    return linhas.map((linha) => ({ ...linha, chamado_id: Number(linha.chamado_id) }));
+    return linhas.map((linha) => ({
+      ...linha,
+      chamado_id: Number(linha.chamado_id),
+      visita_numero: Number(linha.visita_numero),
+      quantidade_visitas: Number(linha.quantidade_visitas),
+    }));
   });
 }
 

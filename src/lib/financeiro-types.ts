@@ -18,6 +18,8 @@ export type ContaReceber = {
   id: string;
   chamado_id: number;
   numero_chamado: string;
+  visita_numero?: number;
+  quantidade_visitas?: number;
   encerrado_em: string;
   hora_inicio_snapshot: string;
   hora_fim_snapshot: string;

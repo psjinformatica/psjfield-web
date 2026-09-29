@@ -22,4 +22,14 @@ describe("isolamento de RAT e Financeiro por ocorrência", () => {
     expect(repository).toContain("${chamado.id}, ${chamado.numero_chamado}");
     expect(repository).toContain("ON CONFLICT (chamado_id)");
   });
+
+  it("reabre e coloca em revisão somente o recebível da ocorrência aberta", async () => {
+    const repository = await readFile(new URL("./repository.ts", import.meta.url), "utf8");
+    const inicio = repository.indexOf("export async function reabrirChamado");
+    const fim = repository.indexOf("export async function criarNovaVisita");
+    const reabertura = repository.slice(inicio, fim);
+    expect(reabertura).toContain("WHERE chamado_id = ${id} AND atual = TRUE");
+    expect(reabertura).toContain("colocarContaEmRevisao(transacao, id)");
+    expect(reabertura).not.toContain("chamado_raiz_id");
+  });
 });

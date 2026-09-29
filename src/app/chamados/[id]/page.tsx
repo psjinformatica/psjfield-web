@@ -7,6 +7,7 @@ import { AgendarNovaVisita } from "@/components/agendar-nova-visita";
 import { AssinaturasAtendimento } from "@/components/assinaturas-atendimento";
 import { ExcluirChamado } from "@/components/excluir-chamado";
 import { MarcarChamadoAcessado } from "@/components/marcar-chamado-acessado";
+import { ChamadoVisitas } from "@/components/chamado-visitas";
 import { RatArquivoAcoes } from "@/components/rat-arquivo-acoes";
 import { formatarCidade, formatarData, formatarDataHora, formatarMoeda } from "@/lib/format";
 import { carregarComplementosChamado } from "@/lib/chamado-detalhe";
@@ -17,6 +18,7 @@ import { ratService } from "@/lib/server-rat";
 import { chamadosService } from "@/lib/server-service";
 import { assinaturasService } from "@/lib/server-signatures";
 import { statusEncerraAtendimento } from "@/lib/status";
+import { exibirIdentificacaoVisita, rotuloVisita } from "@/lib/chamados-visitas";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +38,7 @@ export default async function DetalheChamado({ params }: { params: Promise<{ id:
       tecnico: () => assinaturasService.buscarTecnico(),
       rats: () => ratService.listar(chamadoId),
     });
+    const visitas = await chamadosService.listarVisitas(chamadoId);
     const numero = chamado.numero_chamado || `Chamado ${chamado.id}`;
     const encerrado = statusEncerraAtendimento(chamado.status);
     const ratAtual = rats.find((rat) => rat.atual) || rats[0];
@@ -47,10 +50,12 @@ export default async function DetalheChamado({ params }: { params: Promise<{ id:
         <div>
           <span className={`status status-${chamado.status.toLocaleLowerCase("pt-BR").replaceAll(" ", "-")}`}>{chamado.status}</span>
           <h1>{numero}</h1>
-          <p>{chamado.cliente || "Cliente não informado"}{chamado.visita_numero > 1 ? ` • Visita ${chamado.visita_numero}` : ""}{chamado.projeto ? ` · ${chamado.projeto}` : ""}</p>
+          <p>{chamado.cliente || "Cliente não informado"}{exibirIdentificacaoVisita(visitas.length) ? ` • ${rotuloVisita(chamado.visita_numero)}` : ""}{chamado.projeto ? ` · ${chamado.projeto}` : ""}</p>
         </div>
         {chamado.valor_base && <strong className="detail-price">{formatarMoeda(chamado.valor_base)}</strong>}
       </header>
+
+      <ChamadoVisitas atualId={chamado.id} visitas={visitas} />
 
       <section className="detail-card">
         <div className="section-heading"><span>01</span><div><h2>Dados do chamado</h2><p>Informações recebidas no acionamento.</p></div></div>
@@ -96,7 +101,7 @@ export default async function DetalheChamado({ params }: { params: Promise<{ id:
         </div>}
       </section>
       {resolverModeloRat(chamado) === "dasa-v1" && (chamado.status === "Concluído" || chamado.status === "Improdutivo")
-        ? <AgendarNovaVisita chamadoId={chamado.id} unidadeInicial={chamado.unidade_nome || ""} />
+        ? <AgendarNovaVisita chamadoId={chamado.id} unidadeInicial={visitas.find((visita) => visita.visita_numero === 1)?.unidade_nome || ""} />
         : null}
       <section className="danger-zone">
         <ExcluirChamado id={chamado.id} numero={numero} />
