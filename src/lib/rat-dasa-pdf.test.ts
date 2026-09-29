@@ -7,13 +7,17 @@ import {
   CAMINHO_TEMPLATE_RAT_DASA,
   DESLOCAMENTO_VERTICAL_COMPONENTES_DATA_HORA_RAT_DASA,
   POSICOES_COMPONENTES_DATA_HORA_RAT_DASA,
+  POSICOES_COMPONENTES_TELEFONE_RAT_DASA,
   POSICOES_MARCACOES_RAT_DASA,
   RatDasaPdfOverflowError,
   calcularLayoutTextoRatDasa,
+  calcularLayoutModeloRatDasa,
   componentesDataRatDasaPdf,
   componentesHoraRatDasaPdf,
+  componentesTelefoneRatDasaPdf,
   decomporDataRatDasaPdf,
   decomporHoraRatDasaPdf,
+  decomporTelefoneRatDasaPdf,
   desenharAssinaturaOuNomeRatDasa,
   formatarDataRatDasaPdf,
   gerarRatDasaPdf,
@@ -212,6 +216,29 @@ describe("gerarRatDasaPdf", () => {
       termino_hora: { hora: 481, minuto: 504 },
     });
     expect(DESLOCAMENTO_VERTICAL_COMPONENTES_DATA_HORA_RAT_DASA).toBe(3);
+  });
+
+  it.each([
+    ["(41) 98866-3526", { ddd: "41", prefixo: "98866", sufixo: "3526" }],
+    ["41 3266-7788", { ddd: "41", prefixo: "3266", sufixo: "7788" }],
+  ])("decompõe o telefone %s sem duplicar a máscara impressa", (valor, esperado) => {
+    expect(decomporTelefoneRatDasaPdf(valor)).toEqual(esperado);
+    const componentes = componentesTelefoneRatDasaPdf(valor, POSICOES_COMPONENTES_TELEFONE_RAT_DASA);
+    expect(componentes?.map((item) => item.valor)).toEqual([esperado.ddd, esperado.prefixo, esperado.sufixo]);
+    expect(componentes?.every((item) => !/[()\-]/.test(item.valor))).toBe(true);
+    expect(componentes?.at(-1)!.x + componentes!.at(-1)!.largura).toBeLessThanOrEqual(531);
+  });
+
+  it("faz o modelo caber em uma linha e reduz a fonte somente quando necessário", async () => {
+    const pdf = await PDFDocument.create();
+    const font = await pdf.embedFont(StandardFonts.Helvetica);
+
+    const zebra = calcularLayoutModeloRatDasa(font, "Zebra ZD220T");
+    const longo = calcularLayoutModeloRatDasa(font, "Zebra ZD220T Pro");
+
+    expect(zebra).toMatchObject({ linhas: ["Zebra ZD220T"], tamanho: 8 });
+    expect(longo?.linhas).toHaveLength(1);
+    expect(longo?.tamanho).toBeLessThan(8);
   });
 
   it("quebra texto longo em várias linhas dentro da caixa", async () => {

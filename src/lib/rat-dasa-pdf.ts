@@ -25,6 +25,11 @@ export const CAMINHO_TEMPLATE_RAT_DASA = path.join(process.cwd(), "Documentacao"
 type Caixa = { x: number; topo: number; largura: number; altura: number };
 type PosicoesData = { dia: number; mes: number; ano: number };
 type PosicoesHora = { hora: number; minuto: number };
+type PosicoesTelefone = {
+  ddd: { x: number; largura: number };
+  prefixo: { x: number; largura: number };
+  sufixo: { x: number; largura: number };
+};
 type OpcoesTexto = {
   tamanhoMaximo?: number;
   tamanhoMinimo?: number;
@@ -46,20 +51,20 @@ export class RatDasaPdfOverflowError extends Error {
 }
 
 const caixas = {
-  unidade_nome: { x: 61, topo: 77, largura: 139, altura: 12 },
+  unidade_nome: { x: 63, topo: 78, largura: 127, altura: 11 },
   marca_unidade: { x: 203, topo: 77, largura: 109, altura: 12 },
-  solicitante: { x: 315, topo: 77, largura: 163, altura: 12 },
+  solicitante: { x: 317, topo: 78, largura: 143, altura: 11 },
   setor: { x: 480, topo: 77, largura: 90, altura: 12 },
-  endereco: { x: 61, topo: 100, largura: 251, altura: 13 },
-  cidade: { x: 315, topo: 100, largura: 108, altura: 13 },
-  estado: { x: 426, topo: 100, largura: 52, altura: 13 },
-  telefone: { x: 481, topo: 100, largura: 89, altura: 13 },
-  chamado_moebius: { x: 61, topo: 139, largura: 105, altura: 14 },
+  endereco: { x: 63, topo: 101, largura: 247, altura: 12 },
+  cidade: { x: 317, topo: 101, largura: 104, altura: 12 },
+  estado: { x: 429, topo: 101, largura: 46, altura: 12 },
+  telefone: { x: 458, topo: 101, largura: 75, altura: 12 },
+  chamado_moebius: { x: 63, topo: 140, largura: 99, altura: 13 },
   chamado_ca: { x: 168, topo: 139, largura: 81, altura: 14 },
   patrimonio: { x: 251, topo: 139, largura: 75, altura: 14 },
-  service_tag_serial: { x: 328, topo: 139, largura: 100, altura: 14 },
-  marca_equipamento: { x: 431, topo: 139, largura: 63, altura: 14 },
-  modelo_equipamento: { x: 497, topo: 139, largura: 73, altura: 14 },
+  service_tag_serial: { x: 330, topo: 140, largura: 96, altura: 13 },
+  marca_equipamento: { x: 433, topo: 140, largura: 59, altura: 13 },
+  modelo_equipamento: { x: 468, topo: 140, largura: 65, altura: 13 },
   defeito_informado: { x: 61, topo: 202, largura: 509, altura: 37 },
   defeito_constatado: { x: 61, topo: 251, largura: 509, altura: 38 },
   observacoes_defeito: { x: 80, topo: 291, largura: 490, altura: 20 },
@@ -85,6 +90,12 @@ export const POSICOES_COMPONENTES_DATA_HORA_RAT_DASA = {
 } as const;
 
 export const DESLOCAMENTO_VERTICAL_COMPONENTES_DATA_HORA_RAT_DASA = 3;
+
+export const POSICOES_COMPONENTES_TELEFONE_RAT_DASA: PosicoesTelefone = {
+  ddd: { x: 461, largura: 9 },
+  prefixo: { x: 474, largura: 21 },
+  sufixo: { x: 502, largura: 29 },
+};
 
 export const POSICOES_MARCACOES_RAT_DASA = {
   atendimento: {
@@ -273,6 +284,34 @@ export function componentesHoraRatDasaPdf(valor: string, posicoes: PosicoesHora)
   ];
 }
 
+export function decomporTelefoneRatDasaPdf(valor: string) {
+  const digitos = valor.replace(/\D/g, "");
+  if (digitos.length !== 10 && digitos.length !== 11) return null;
+  return {
+    ddd: digitos.slice(0, 2),
+    prefixo: digitos.slice(2, -4),
+    sufixo: digitos.slice(-4),
+  };
+}
+
+export function componentesTelefoneRatDasaPdf(valor: string, posicoes: PosicoesTelefone) {
+  const partes = decomporTelefoneRatDasaPdf(valor);
+  if (!partes) return null;
+  return [
+    { valor: partes.ddd, ...posicoes.ddd },
+    { valor: partes.prefixo, ...posicoes.prefixo },
+    { valor: partes.sufixo, ...posicoes.sufixo },
+  ];
+}
+
+export function calcularLayoutModeloRatDasa(font: PDFFont, valor: string) {
+  return calcularLayoutTextoRatDasa(font, valor, caixas.modelo_equipamento, {
+    tamanhoMaximo: 8,
+    tamanhoMinimo: 5.5,
+    maximoLinhas: 1,
+  });
+}
+
 function desenharComponentesDataHora(
   page: PDFPage,
   font: PDFFont,
@@ -295,6 +334,27 @@ function desenharComponentesDataHora(
   ));
 }
 
+function desenharTelefone(page: PDFPage, font: PDFFont, valor: string) {
+  if (!valor) return;
+  const componentes = componentesTelefoneRatDasaPdf(valor, POSICOES_COMPONENTES_TELEFONE_RAT_DASA);
+  if (!componentes) {
+    desenharTexto(page, font, "telefone", valor, caixas.telefone, {
+      tamanhoMaximo: 6.5,
+      tamanhoMinimo: 5.5,
+      maximoLinhas: 1,
+    });
+    return;
+  }
+  componentes.forEach(({ valor: parte, x, largura }) => desenharTexto(
+    page,
+    font,
+    "telefone",
+    parte,
+    { ...caixas.telefone, x, largura },
+    { tamanhoMaximo: 7.5, tamanhoMinimo: 6, maximoLinhas: 1 },
+  ));
+}
+
 function preencherTextos(page: PDFPage, font: PDFFont, dados: RatDasaSnapshotV1) {
   desenharTexto(page, font, "unidade/nome", dados.local.unidade_nome, caixas.unidade_nome);
   desenharTexto(page, font, "marca da unidade", dados.local.marca, caixas.marca_unidade);
@@ -303,13 +363,17 @@ function preencherTextos(page: PDFPage, font: PDFFont, dados: RatDasaSnapshotV1)
   desenharTexto(page, font, "endereço", dados.local.endereco, caixas.endereco);
   desenharTexto(page, font, "cidade", dados.local.cidade, caixas.cidade);
   desenharTexto(page, font, "estado", dados.local.estado, caixas.estado);
-  desenharTexto(page, font, "telefone", dados.local.telefone, caixas.telefone);
+  desenharTelefone(page, font, dados.local.telefone);
   desenharTexto(page, font, "chamado Moebius", dados.equipamento.chamado_moebius, caixas.chamado_moebius);
   desenharTexto(page, font, "chamado CA", dados.equipamento.chamado_ca, caixas.chamado_ca);
   desenharTexto(page, font, "patrimônio", dados.equipamento.patrimonio, caixas.patrimonio);
   desenharTexto(page, font, "service tag/serial", dados.equipamento.service_tag_serial, caixas.service_tag_serial);
   desenharTexto(page, font, "marca do equipamento", dados.equipamento.marca, caixas.marca_equipamento);
-  desenharTexto(page, font, "modelo", dados.equipamento.modelo, caixas.modelo_equipamento);
+  desenharTexto(page, font, "modelo", dados.equipamento.modelo, caixas.modelo_equipamento, {
+    tamanhoMaximo: 8,
+    tamanhoMinimo: 5.5,
+    maximoLinhas: 1,
+  });
   desenharTexto(page, font, "defeito informado", dados.atendimento.defeito_informado, caixas.defeito_informado, { tamanhoMaximo: 9, tamanhoMinimo: 5.5, maximoLinhas: 3, fatorLarguraPreferida: 0.9 });
   desenharTexto(page, font, "defeito constatado", dados.atendimento.defeito_constatado, caixas.defeito_constatado, { tamanhoMaximo: 9, tamanhoMinimo: 5.5, maximoLinhas: 3, fatorLarguraPreferida: 0.9 });
   desenharTexto(page, font, "observações do defeito", dados.atendimento.observacoes_defeito, caixas.observacoes_defeito, { tamanhoMaximo: 7, maximoLinhas: 1 });
