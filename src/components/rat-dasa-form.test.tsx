@@ -9,6 +9,7 @@ import {
   usarSolicitanteComoAcompanhante,
 } from "@/components/rat-dasa-form";
 import { criarSimulacaoRatDasa } from "@/lib/rat-dasa-simulation";
+import type { RatRegistro } from "@/lib/rat-types";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
@@ -65,6 +66,28 @@ describe("RatDasaForm", () => {
     expect(bloqueado).not.toContain(">Gerar RAT<");
     expect(habilitado).toContain("Gerar prévia da RAT");
     expect(habilitado).toContain(">Gerar RAT<");
+  });
+
+  it("formata a emissão das versões DASA com locale e timezone determinísticos", () => {
+    const dados = criarSimulacaoRatDasa();
+    const versao: RatRegistro = {
+      id: "rat-dasa-1",
+      chamado_id: 20,
+      versao: 1,
+      caminho_pdf: "20/rat-dasa-1.pdf",
+      hash_pdf: "a".repeat(64),
+      tecnico: "Técnico Exemplo",
+      status_rat: "Gerada",
+      atual: true,
+      gerado_em: "2026-09-15T12:00:00.000Z",
+      dados_revisao: dados,
+      modelo_rat: "dasa",
+    };
+
+    const html = renderToStaticMarkup(<RatDasaForm chamadoId={20} inicial={dados} versoes={[versao]} />);
+
+    expect(html).toContain("15/09/2026 às 09:00");
+    expect(html).not.toContain("15/09/2026, 12:00:00");
   });
 
   it("mantém a prévia no endpoint sem persistência", async () => {

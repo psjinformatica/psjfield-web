@@ -4,6 +4,7 @@ import { FileDown, LoaderCircle } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RatArquivoAcoes } from "@/components/rat-arquivo-acoes";
+import { formatarDataHora } from "@/lib/format";
 import { nomeArquivoRat } from "@/lib/rat-arquivo";
 import { CONDICOES_EQUIPAMENTO, DIAGNOSTICOS, ITENS_AFETADOS, STATUS_EQUIPAMENTO, TIPOS_EQUIPAMENTO, TIPOS_OCORRENCIA, VALIDACOES_FINAIS, type RatRegistro, type RatRevisao } from "@/lib/rat-types";
 
@@ -71,6 +72,6 @@ export function RatForm({ chamadoId, status, inicial, versoes, visitaNumero = 1 
       <button className="primary-button" disabled={pendente}>{pendente ? <><LoaderCircle className="spin" size={17} />Gerando...</> : <><FileDown size={17} />Gerar RAT em PDF</>}</button>
     </form>
     {versoes.length > 0 && <section className="detail-card"><div className="section-heading"><span>PDF</span><div><h2>Versões geradas</h2><p>A versão anterior é preservada.</p></div></div><div className="rat-versions">{versoes.map((rat) =>
-      <div key={rat.id}><strong>Versão {rat.versao}{rat.atual ? " · Atual" : ""}</strong><span>{new Date(rat.gerado_em).toLocaleString("pt-BR")}</span><RatArquivoAcoes chamadoId={chamadoId} ratId={rat.id} nomeArquivo={nomeArquivoRat(inicial.chamado, rat.versao, visitaNumero)} /></div>)}</div></section>}
+      <div key={rat.id}><strong>Versão {rat.versao}{rat.atual ? " · Atual" : ""}</strong><span>{formatarDataHora(rat.gerado_em)}</span><RatArquivoAcoes chamadoId={chamadoId} ratId={rat.id} nomeArquivo={nomeArquivoRat(inicial.chamado, rat.versao, visitaNumero)} /></div>)}</div></section>}
   </>;
 }

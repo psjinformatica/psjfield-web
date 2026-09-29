@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import { RatForm } from "@/components/rat-form";
-import type { RatRevisao } from "@/lib/rat-types";
+import type { RatRegistro, RatRevisao } from "@/lib/rat-types";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn() }),
@@ -33,5 +33,26 @@ describe("RatForm Claro", () => {
     expect(html).toContain('value="MI-100"');
     expect(html).toContain("utiliza as três linhas disponíveis");
     expect(html).not.toContain("serão limitados");
+  });
+
+  it("formata a emissão das versões Claro com locale e timezone determinísticos", () => {
+    const versao: RatRegistro = {
+      id: "rat-claro-1",
+      chamado_id: 1,
+      versao: 1,
+      caminho_pdf: "1/rat-claro-1.pdf",
+      hash_pdf: "a".repeat(64),
+      tecnico: "Técnico Exemplo",
+      status_rat: "Gerada",
+      atual: true,
+      gerado_em: "2026-09-15T12:00:00.000Z",
+      dados_revisao: revisao,
+      modelo_rat: "claro",
+    };
+
+    const html = renderToStaticMarkup(<RatForm chamadoId={1} status="Concluído" inicial={revisao} versoes={[versao]} />);
+
+    expect(html).toContain("15/09/2026 às 09:00");
+    expect(html).not.toContain("15/09/2026, 12:00:00");
   });
 });

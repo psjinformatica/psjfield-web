@@ -5,6 +5,7 @@ import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { RatArquivoAcoes } from "@/components/rat-arquivo-acoes";
+import { formatarDataHora } from "@/lib/format";
 import { nomeArquivoRat } from "@/lib/rat-arquivo";
 import {
   AVALIACOES_DASA,
@@ -294,6 +295,6 @@ export function RatDasaForm({ chamadoId, inicial, persistenciaHabilitada = false
 
     {urlPrevia ? <section className="detail-card dasa-preview" aria-live="polite"><div className="section-heading"><span>PDF</span><div><h2>Prévia local</h2><p>Este arquivo existe apenas nesta sessão do navegador.</p></div></div><a className="secondary-button" href={urlPrevia} target="_blank" rel="noreferrer"><ExternalLink size={17} />Abrir prévia em nova aba</a><iframe title="Prévia da RAT DASA" src={urlPrevia} /></section> : null}
     {versoes.length > 0 ? <section className="detail-card"><div className="section-heading"><span>PDF</span><div><h2>Versões DASA geradas</h2><p>Cada arquivo permanece preservado.</p></div></div><div className="rat-versions">{versoes.map((rat) =>
-      <div key={rat.id}><strong>Versão {rat.versao}{rat.atual ? " · Atual" : ""}</strong><span>{new Date(rat.gerado_em).toLocaleString("pt-BR")}</span><RatArquivoAcoes chamadoId={chamadoId} ratId={rat.id} nomeArquivo={nomeArquivoRat(dados.equipamento.chamado_moebius, rat.versao, visitaNumero)} /></div>)}</div></section> : null}
+      <div key={rat.id}><strong>Versão {rat.versao}{rat.atual ? " · Atual" : ""}</strong><span>{formatarDataHora(rat.gerado_em)}</span><RatArquivoAcoes chamadoId={chamadoId} ratId={rat.id} nomeArquivo={nomeArquivoRat(dados.equipamento.chamado_moebius, rat.versao, visitaNumero)} /></div>)}</div></section> : null}
   </>;
 }
