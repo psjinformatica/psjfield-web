@@ -3,7 +3,7 @@ export type ChamadoOrdenavel = {
   status: string;
   data_agendada: string;
   hora_agendada: string;
-  encerrado_em?: Date | string | null;
+  encerrado_operacional_em?: Date | string | null;
   atualizado_em?: Date | string | null;
 };
 
@@ -71,8 +71,8 @@ export function compararChamados(a: ChamadoOrdenavel, b: ChamadoOrdenavel) {
     && (b.status === "Concluído" || b.status === "Improdutivo")
   ) {
     const diferencaEncerramento = compararNullable(
-      instante(a.encerrado_em),
-      instante(b.encerrado_em),
+      instante(a.encerrado_operacional_em),
+      instante(b.encerrado_operacional_em),
       -1,
     );
     if (diferencaEncerramento) return diferencaEncerramento;

@@ -32,12 +32,15 @@ type ChamadoLinhaListagem = Omit<
 export async function listarChamados(): Promise<ChamadoResumo[]> {
   return observeDatabaseOperation("chamados.listar", async () => {
     const sql = getSql();
+    // Enquanto chamados não possui encerrado_em próprio, atualizado_em é o melhor
+    // proxy disponível para o encerramento operacional. Evolução futura: criar
+    // chamados.encerrado_em dedicado, sem acoplar a ordem ao Financeiro.
     const linhas = await sql<ChamadoLinhaListagem[]>`
     SELECT c.id, c.numero_chamado, c.visita_numero, c.chamado_raiz_id,
            c.status, c.data_agendada, c.hora_agendada,
            c.cliente, c.projeto, c.cidade, c.estado, c.atividade, c.valor_base,
            c.visualizado_em, cr.valor_total AS valor_financeiro,
-           cr.encerrado_em, c.atualizado_em
+           c.atualizado_em AS encerrado_operacional_em, c.atualizado_em
     FROM chamados c
     LEFT JOIN contas_receber cr ON cr.chamado_id = c.id
     ORDER BY CASE
@@ -57,7 +60,7 @@ export async function listarChamados(): Promise<ChamadoResumo[]> {
                THEN c.hora_agendada::time
              END ASC NULLS LAST,
              CASE WHEN c.status IN ('Concluído', 'Improdutivo')
-               THEN cr.encerrado_em
+               THEN c.atualizado_em
              END DESC NULLS LAST,
              CASE WHEN c.status NOT IN ('Agendado', 'Concluído', 'Improdutivo')
                THEN c.atualizado_em
@@ -73,12 +76,12 @@ export async function listarChamados(): Promise<ChamadoResumo[]> {
       quantidades.set(raizId, (quantidades.get(raizId) ?? 0) + 1);
     }
     return ordenarChamados(linhas).map((linha) => {
-      const { encerrado_em, atualizado_em, ...resumo } = linha;
+      const { encerrado_operacional_em, atualizado_em, ...resumo } = linha;
       const raizId = obterChamadoRaizId({
         id: Number(resumo.id),
         chamado_raiz_id: resumo.chamado_raiz_id === null ? null : Number(resumo.chamado_raiz_id),
       });
-      void encerrado_em;
+      void encerrado_operacional_em;
       void atualizado_em;
       return {
         ...resumo,

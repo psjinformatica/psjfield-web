@@ -100,8 +100,8 @@ describe("valor financeiro nos cards de chamados", () => {
 
   it("preserva valor e ordem ao filtrar", () => {
     const ordenados = ordenarChamados([
-      { ...chamado(20, "130.00"), encerrado_em: "2026-09-15T12:00:00.000Z" },
-      { ...chamado(21, "160.00"), encerrado_em: "2026-09-21T12:00:00.000Z" },
+      { ...chamado(20, "130.00"), encerrado_operacional_em: "2026-09-15T12:00:00.000Z" },
+      { ...chamado(21, "160.00"), encerrado_operacional_em: "2026-09-21T12:00:00.000Z" },
     ]);
     const filtrados = filtrarChamados(ordenados, "dasa", "Todos");
     expect(filtrados.map((item) => [item.id, item.valor_card])).toEqual([[20, "130.00"]]);

@@ -10,6 +10,8 @@ describe("consulta da listagem de chamados", () => {
 
     expect(listagem).toContain("LEFT JOIN contas_receber cr ON cr.chamado_id = c.id");
     expect(listagem).toContain("cr.valor_total AS valor_financeiro");
+    expect(listagem).toContain("c.atualizado_em AS encerrado_operacional_em");
+    expect(listagem).not.toContain("THEN cr.encerrado_em");
     expect(listagem.match(/await sql</g)).toHaveLength(1);
     expect(listagem).not.toContain("valor_recebido");
   });

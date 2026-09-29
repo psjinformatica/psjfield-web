@@ -8,8 +8,19 @@ import {
   prepararRecebivelAutomatico,
 } from "@/lib/financeiro-politicas";
 import { REGRA_PRECO_ATUAL, type ContaReceber } from "@/lib/financeiro-types";
+import { statusGeraRecebimento } from "@/lib/status";
 
 type Transacao = postgres.TransactionSql<Record<string, never>>;
+
+export type ResultadoReparoRecebivel = {
+  criado: boolean;
+  recebivel_id: string;
+  chamado_id: number;
+  previsao_recebimento: string;
+  duracao_minutos: number;
+  valor_total: number;
+  regra_preco: typeof REGRA_PRECO_ATUAL;
+};
 
 export async function registrarContaAutomatica(
   transacao: Transacao,
@@ -57,6 +68,92 @@ export async function registrarContaAutomatica(
       atualizado_em = NOW()
   `;
   return true;
+}
+
+export async function repararContaAutomaticaAusente(
+  chamadoId: number,
+): Promise<ResultadoReparoRecebivel> {
+  return observeDatabaseOperation("financeiro.repararAusente", async () => {
+    const sql = getSql();
+    return sql.begin(async (transacao) => {
+      const chamados = await transacao<{
+        id: number;
+        numero_chamado: string;
+        cliente: string;
+        status: string;
+        hora_inicio: string;
+        hora_termino: string;
+        atualizado_em: Date | string;
+      }[]>`
+        SELECT id, numero_chamado, cliente, status, hora_inicio, hora_termino, atualizado_em
+        FROM chamados
+        WHERE id = ${chamadoId}
+        FOR UPDATE
+      `;
+      const chamado = chamados[0];
+      if (!chamado) throw new Error("Chamado não encontrado.");
+      if (!statusGeraRecebimento(chamado.status)) {
+        throw new Error(`O chamado ${chamadoId} não possui status financeiro encerrado.`);
+      }
+
+      const existentes = await transacao<{ id: string }[]>`
+        SELECT id FROM contas_receber WHERE chamado_id = ${chamadoId}
+      `;
+      const encerradoEm = chamado.atualizado_em instanceof Date
+        ? chamado.atualizado_em.toISOString()
+        : chamado.atualizado_em;
+      const preparado = prepararRecebivelAutomatico(
+        chamado.cliente,
+        encerradoEm,
+        chamado.hora_inicio,
+        chamado.hora_termino,
+      );
+      if (!preparado?.calculo) {
+        throw new Error(`Não foi possível reconstruir integralmente o recebível do chamado ${chamadoId}.`);
+      }
+      const resultadoBase = {
+        chamado_id: Number(chamado.id),
+        previsao_recebimento: preparado.previsao_recebimento,
+        duracao_minutos: preparado.calculo.duracao_minutos,
+        valor_total: preparado.calculo.valor_total,
+        regra_preco: preparado.calculo.regra_preco,
+      };
+      if (existentes[0]) {
+        return { criado: false, recebivel_id: existentes[0].id, ...resultadoBase };
+      }
+
+      const calculo = preparado.calculo;
+      const inseridas = await transacao<{ id: string }[]>`
+        INSERT INTO contas_receber (
+          chamado_id, numero_chamado_snapshot, encerrado_em,
+          hora_inicio_snapshot, hora_fim_snapshot, duracao_minutos, horas_adicionais,
+          valor_base, valor_hora_adicional, valor_adicional, valor_total,
+          regra_preco, origem, prazo_dias, situacao, revisao_pendente
+        ) VALUES (
+          ${chamado.id}, ${chamado.numero_chamado}, ${encerradoEm},
+          ${chamado.hora_inicio}, ${chamado.hora_termino},
+          ${calculo.duracao_minutos}, ${calculo.horas_adicionais},
+          ${calculo.valor_base}, ${calculo.valor_hora_adicional},
+          ${calculo.valor_adicional}, ${calculo.valor_total},
+          ${calculo.regra_preco}, 'AUTOMATICO', ${preparado.prazo_dias},
+          'A_RECEBER', FALSE
+        )
+        ON CONFLICT (chamado_id) DO NOTHING
+        RETURNING id
+      `;
+      const recebivelId = inseridas[0]?.id;
+      if (!recebivelId) {
+        const concorrentes = await transacao<{ id: string }[]>`
+          SELECT id FROM contas_receber WHERE chamado_id = ${chamadoId}
+        `;
+        if (!concorrentes[0]) {
+          throw new Error(`O reparo do chamado ${chamadoId} não criou nem encontrou um recebível.`);
+        }
+        return { criado: false, recebivel_id: concorrentes[0].id, ...resultadoBase };
+      }
+      return { criado: true, recebivel_id: recebivelId, ...resultadoBase };
+    });
+  });
 }
 
 export async function colocarContaEmRevisao(transacao: Transacao, chamadoId: number) {
