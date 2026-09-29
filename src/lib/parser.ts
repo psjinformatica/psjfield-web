@@ -6,15 +6,16 @@ import type { ChamadoImportacao, PreviaImportacao } from "@/lib/types";
 const rotulos: Record<string, string[]> = {
   cliente: ["CLIENTE", "CLIENTE FINAL", "DOMINIO"],
   projeto: ["PROJETO", "CONTRATO"],
-  numero_chamado: ["CHAMADO", "NUMERO DO CHAMADO"],
+  numero_chamado: ["CHAMADO", "CHAMADO INTERNO", "NUMERO DO CHAMADO"],
   data_agendada: ["DATA", "DATA DO ATENDIMENTO", "DATA AGENDADA"],
   hora_agendada: ["HORARIO", "HORA", "HORARIO DO ATENDIMENTO"],
-  contato: ["CONTATO", "USUARIO", "RESPONSAVEL"],
+  contato: ["CONTATO", "USUARIO", "RESPONSAVEL", "NOME DO SOLICITANTE"],
   telefone: ["TELEFONE", "FONE", "CELULAR"],
-  endereco: ["ENDERECO", "LOCAL DO ATENDIMENTO"],
-  atividade: ["ATIVIDADE", "SERVICO", "ATIVIDADE A SER REALIZADA"],
+  endereco: ["ENDERECO", "ENDERECO DE ATENDIMENTO", "LOCAL DO ATENDIMENTO"],
+  atividade: ["ATIVIDADE", "SERVICO", "ATIVIDADE A SER REALIZADA", "DEFEITO OU SOLICITACAO"],
   descricao: ["DESCRICAO", "DESCRICAO DO SERVICO"],
   equipamento: ["EQUIPAMENTO"],
+  unidade_nome: ["NOME DA UNIDADE"],
   fabricante: ["FABRICANTE", "MARCA"],
   modelo: ["MODELO"],
   patrimonio_ae: ["PATRIMONIO", "ATIVO", "AE"],
@@ -164,6 +165,7 @@ export async function interpretarEml(
     usuario_responsavel: "",
     contato: "",
     telefone: "",
+    unidade_nome: "",
     endereco: "",
     cidade: "",
     estado: "",
@@ -194,7 +196,7 @@ export async function interpretarEml(
   const [cidade, estado] = extrairCidadeEstado(endereco);
   const equipamento = extrairEquipamento(dados.equipamento || "", dados);
   const origemNumero = dados.numero_chamado || assunto;
-  const numero = origemNumero.match(/\bMI-\d+(?:-\d+)?\b/i)?.[0].toUpperCase() || "";
+  const numero = origemNumero.match(/\b(?:MI|SR)-\d+(?:-\d+)?\b/i)?.[0].toUpperCase() || "";
   const clienteBruto = dados.cliente?.trim() || "";
   const cliente = intermediadoras.has(semAcentos(clienteBruto).toUpperCase()) ? "" : clienteBruto;
 
@@ -212,6 +214,7 @@ export async function interpretarEml(
       usuario_responsavel: dados.contato || "",
       contato: dados.contato || "",
       telefone: dados.telefone || "",
+      unidade_nome: dados.unidade_nome?.trim() || "",
       endereco,
       cidade,
       estado,

@@ -27,6 +27,7 @@ export const MOTIVOS_LAUDO_DASA = [
 export const AVALIACOES_DASA = ["BOM", "REGULAR", "RUIM"] as const;
 
 export const ORIGENS_UNIDADE_DASA = [
+  // Mantido apenas para leitura de revisões históricas; o mapper atual não produz esta origem.
   "EQUIPAMENTO_SUGERIDO",
   "INFORMADO",
   "NAO_IDENTIFICADA",

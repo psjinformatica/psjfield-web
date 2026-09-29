@@ -23,6 +23,7 @@ export const chamadoDasaSeguro = {
   usuario_responsavel: "",
   contato: "Solicitante Exemplo",
   telefone: "",
+  unidade_nome: null,
   endereco: "Endereço de teste, 100",
   descricao: "",
   equipamento: "UNIDADE-TESTE",
@@ -54,6 +55,11 @@ export function criarRatDasaValida(): RatDasaSnapshotV1 {
   });
   return {
     ...dados,
+    local: {
+      ...dados.local,
+      unidade_nome: "Unidade Teste",
+      unidade_nome_origem: "INFORMADO",
+    },
     atendimento: {
       ...dados.atendimento,
       defeito_constatado: "Falha no circuito da operadora",

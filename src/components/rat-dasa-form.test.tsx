@@ -49,7 +49,8 @@ describe("RatDasaForm", () => {
     const html = renderToStaticMarkup(<RatDasaForm chamadoId={20} inicial={criarSimulacaoRatDasa()} />);
 
     expect(html).toContain("SR-855635");
-    expect(html).toContain("UNIDADE-TESTE");
+    expect(html).toContain("Unidade Teste");
+    expect(html).not.toContain("UNIDADE-TESTE");
     expect(html).toContain("Solicitante Exemplo");
     expect(html).toContain("Técnico Exemplo");
     expect(html).toContain('value="2026-09-15"');

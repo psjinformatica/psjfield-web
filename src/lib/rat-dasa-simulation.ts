@@ -22,6 +22,7 @@ export const chamadoSimulacaoRatDasa = {
   usuario_responsavel: "",
   contato: "Solicitante Exemplo",
   telefone: "",
+  unidade_nome: "Unidade Teste",
   endereco: "Endereço de teste, 100",
   descricao: "",
   equipamento: "UNIDADE-TESTE",

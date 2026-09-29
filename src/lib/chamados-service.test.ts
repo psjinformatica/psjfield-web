@@ -26,6 +26,7 @@ function importacao(hash = "hash-1"): ChamadoImportacao {
     usuario_responsavel: "",
     contato: "",
     telefone: "",
+    unidade_nome: null,
     endereco: "",
     cidade: "",
     estado: "",

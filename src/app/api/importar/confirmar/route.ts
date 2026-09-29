@@ -1,17 +1,10 @@
 import { NextResponse } from "next/server";
 
+import { aplicarRevisaoImportacao } from "@/lib/importacao-campos";
 import { interpretarEml } from "@/lib/parser";
 import { chamadosService } from "@/lib/server-service";
-import type { ChamadoImportacao } from "@/lib/types";
 
 export const runtime = "nodejs";
-
-const editaveis: (keyof ChamadoImportacao)[] = [
-  "numero_chamado", "cliente", "projeto", "data_agendada", "hora_agendada",
-  "contato", "telefone", "endereco", "cidade", "estado", "atividade", "descricao",
-  "equipamento", "fabricante", "modelo", "patrimonio_ae", "numero_serie",
-  "valor_base", "horas_incluidas", "valor_hora_adicional", "observacoes",
-];
 
 export async function POST(request: Request) {
   try {
@@ -21,13 +14,7 @@ export async function POST(request: Request) {
     if (arquivo.size > 10 * 1024 * 1024) throw new Error("O arquivo excede o limite de 10 MB.");
     const previa = await interpretarEml(new Uint8Array(await arquivo.arrayBuffer()), arquivo.name);
     const dados = JSON.parse(String(form.get("dados") || "{}")) as Record<string, unknown>;
-    const revisado = { ...previa.chamado };
-    for (const campo of editaveis) {
-      const valor = dados[campo];
-      if (typeof valor === "string" || valor === null) {
-        Object.assign(revisado, { [campo]: valor });
-      }
-    }
+    const revisado = aplicarRevisaoImportacao(previa.chamado, dados);
     for (const campo of ["valor_base", "horas_incluidas", "valor_hora_adicional"] as const) {
       if (revisado[campo] === "") revisado[campo] = null;
       if (revisado[campo] !== null && !Number.isFinite(Number(revisado[campo]))) {

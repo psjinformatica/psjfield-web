@@ -28,6 +28,7 @@ export type Chamado = Omit<
   usuario_responsavel: string;
   contato: string;
   telefone: string;
+  unidade_nome: string | null;
   endereco: string;
   descricao: string;
   equipamento: string;

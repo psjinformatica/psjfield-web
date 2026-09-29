@@ -8,6 +8,7 @@ const chamado = {
   hora_inicio: "09:15", hora_termino: "10:30", cliente: "Claro", projeto: "", cidade: "Curitiba", estado: "PR",
   atividade: "Troca", valor_base: null, empresa_parceira: "", assunto_email: "", remetente: "", destinatario: "",
   data_email: "", usuario_responsavel: "login", contato: "Ana", telefone: "41999990000", endereco: "Rua A",
+  unidade_nome: null,
   descricao: "", equipamento: "Notebook", fabricante: "Dell", modelo: "5400", patrimonio_ae: "AE1", numero_serie: "S1",
   horas_incluidas: null, valor_hora_adicional: null, observacoes: "", hora_chegada: "09:00", descricao_servico: "Atendimento",
   observacoes_atendimento: "",

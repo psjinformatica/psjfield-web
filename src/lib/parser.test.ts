@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { interpretarEml } from "@/lib/parser";
+import { extrairCampos, interpretarEml } from "@/lib/parser";
 
-function eml(corpo: string) {
+function eml(corpo: string, assunto = "Acionamento MI-285611-2") {
   return new TextEncoder().encode(
     `From: Grupo Easy <operacoes@grupoeasy.example>\r\n` +
     `To: tecnico@example.invalid\r\n` +
-    `Subject: Acionamento MI-285611-2\r\n` +
+    `Subject: ${assunto}\r\n` +
     `Date: Thu, 30 Jul 2026 10:00:00 -0300\r\n` +
     `Content-Type: text/plain; charset=utf-8\r\n\r\n${corpo}`,
   );
@@ -35,6 +35,38 @@ describe("interpretarEml", () => {
   it("não classifica a intermediadora como cliente", async () => {
     const previa = await interpretarEml(eml("CLIENTE: Easytech"), "teste.eml");
     expect(previa.chamado.cliente).toBe("");
+  });
+
+  it("reconhece rótulos DASA somente quando há correspondência semântica direta", async () => {
+    const corpo = [
+      "CLIENTE: DASA",
+      "CHAMADO INTERNO: SR-900001",
+      "Defeito ou solicitação: Falha de conectividade informada",
+      "Nome da unidade: Unidade Diagnóstico | Filial 01",
+      "EQUIPAMENTO: Etiquetadora",
+      "Endereço de atendimento: Rua Exemplo, 100 - Centro, Curitiba - PR, 80000-000",
+      "Nome do solicitante: Solicitante Exemplo",
+      "Telefone:",
+    ].join("\r\n");
+    const extraidos = extrairCampos(corpo);
+    const previa = await interpretarEml(eml(corpo, "Atendimento DASA SR-900001"), "dasa.eml");
+
+    expect(extraidos.unidade_nome).toBe("Unidade Diagnóstico | Filial 01");
+    expect(previa.chamado).toMatchObject({
+      numero_chamado: "SR-900001",
+      cliente: "DASA",
+      contato: "Solicitante Exemplo",
+      unidade_nome: "Unidade Diagnóstico | Filial 01",
+      endereco: "Rua Exemplo, 100 - Centro, Curitiba - PR, 80000-000",
+      cidade: "Curitiba",
+      estado: "PR",
+      atividade: "Falha de conectividade informada",
+      equipamento: "Etiquetadora",
+      fabricante: "",
+      modelo: "",
+      patrimonio_ae: "",
+      numero_serie: "",
+    });
   });
 
   it("preserva somente metadados e corpo em e-mail genérico", async () => {

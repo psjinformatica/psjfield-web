@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { formatarCidade, formatarDataHora } from "@/lib/format";
+import { CAMPOS_PREVIEW_IMPORTACAO } from "@/lib/importacao-campos";
 import type { ChamadoDuplicado, PreviaImportacao } from "@/lib/types";
 
 type RespostaPrevia = PreviaImportacao & { duplicado: ChamadoDuplicado | null; erro?: string };
@@ -25,27 +26,6 @@ export async function confirmarImportacaoENavegar(
   if (!resposta.ok) throw new Error(dados.erro);
   router.replace(`/chamados/${dados.id}`);
 }
-
-const campos = [
-  ["numero_chamado", "Número do chamado"],
-  ["cliente", "Cliente"],
-  ["projeto", "Projeto"],
-  ["data_agendada", "Data"],
-  ["hora_agendada", "Hora"],
-  ["contato", "Contato"],
-  ["telefone", "Telefone"],
-  ["endereco", "Endereço"],
-  ["cidade", "Cidade"],
-  ["estado", "UF"],
-  ["atividade", "Atividade"],
-  ["equipamento", "Equipamento"],
-  ["fabricante", "Fabricante"],
-  ["modelo", "Modelo"],
-  ["numero_serie", "Número de série"],
-  ["patrimonio_ae", "AE"],
-  ["valor_base", "Valor base"],
-  ["valor_hora_adicional", "Hora adicional"],
-] as const;
 
 export function ImportarForm() {
   const router = useRouter();
@@ -136,7 +116,7 @@ export function ImportarForm() {
             <div><h2>Revise antes de importar</h2><p>{previa.reconhecidoGrupoEasy ? "Padrão Grupo Easy reconhecido." : "E-mail genérico: somente dados seguros foram carregados."}</p></div>
           </div>
           <div className="review-grid">
-            {campos.map(([campo, rotulo]) => (
+            {CAMPOS_PREVIEW_IMPORTACAO.map(([campo, rotulo]) => (
               <label key={campo}>{rotulo}
                 <input
                   type={campo === "data_agendada" ? "date" : campo === "hora_agendada" ? "time" : "text"}

@@ -17,8 +17,12 @@ describe("domínio RAT DASA V1", () => {
 });
 
 describe("mapChamadoParaRatDasa", () => {
-  it("mapeia somente dados existentes e marca a unidade como sugestão revisável", () => {
-    const dados = mapChamadoParaRatDasa(chamadoDasaSeguro, {
+  it("não usa equipamento como unidade e mapeia classificação explícita de equipamento", () => {
+    const dados = mapChamadoParaRatDasa({
+      ...chamadoDasaSeguro,
+      unidade_nome: "Unidade DASA",
+      equipamento: "Etiquetadora",
+    }, {
       tecnico: tecnicoDasaSeguro,
       tipoAtendimentoSugerido: "FIELD_SERVICES",
     });
@@ -27,14 +31,14 @@ describe("mapChamadoParaRatDasa", () => {
       modelo: "dasa-v1",
       schema_versao: 1,
       local: {
-        unidade_nome: "UNIDADE-TESTE",
-        unidade_nome_origem: "EQUIPAMENTO_SUGERIDO",
+        unidade_nome: "Unidade DASA",
+        unidade_nome_origem: "INFORMADO",
         solicitante: "Solicitante Exemplo",
         endereco: "Endereço de teste, 100",
         cidade: "Cidade Teste",
         estado: "PR",
       },
-      equipamento: { chamado_moebius: "SR-855635" },
+      equipamento: { chamado_moebius: "SR-855635", tipo: "Etiquetadora" },
       atendimento: {
         tipo: "FIELD_SERVICES",
         defeito_informado: "Conectividade da unidade indisponível",
@@ -46,7 +50,19 @@ describe("mapChamadoParaRatDasa", () => {
         termino_hora: "12:40",
       },
     });
-    expect(dados.local.unidade_nome).toBe(chamadoDasaSeguro.equipamento);
+    expect(dados.local.unidade_nome).not.toBe("Etiquetadora");
+  });
+
+  it("não converte texto ambíguo de equipamento em unidade nem em tipo DASA", () => {
+    const dados = mapChamadoParaRatDasa({
+      ...chamadoDasaSeguro,
+      unidade_nome: null,
+      equipamento: "DG24 | FEF - FR IMMEF",
+    });
+
+    expect(dados.local.unidade_nome).toBe("");
+    expect(dados.local.unidade_nome_origem).toBe("NAO_IDENTIFICADA");
+    expect(dados.equipamento.tipo).toBe("");
   });
 
   it("não inventa diagnóstico, datas reais, signatário, checklists ou respostas opcionais", () => {

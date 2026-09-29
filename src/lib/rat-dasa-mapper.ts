@@ -1,11 +1,13 @@
 import type { AssinaturaTecnico } from "@/lib/assinaturas-types";
-import type {
-  ChecklistAplicadoDasa,
-  ChecklistFormatacaoAntesDasa,
-  ChecklistFormatacaoDepoisDasa,
-  RatDasaAssinaturaReferencia,
-  RatDasaSnapshotV1,
-  TipoAtendimentoDasa,
+import {
+  TIPOS_EQUIPAMENTO_DASA,
+  type ChecklistAplicadoDasa,
+  type ChecklistFormatacaoAntesDasa,
+  type ChecklistFormatacaoDepoisDasa,
+  type RatDasaAssinaturaReferencia,
+  type RatDasaSnapshotV1,
+  type TipoAtendimentoDasa,
+  type TipoEquipamentoDasa,
 } from "@/lib/rat-dasa-types";
 import type { Chamado } from "@/lib/types";
 
@@ -68,19 +70,37 @@ export type OpcoesMapeamentoRatDasa = {
   tipoAtendimentoSugerido?: TipoAtendimentoDasa;
 };
 
+function normalizarClassificacao(valor: string): string {
+  return valor
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLocaleLowerCase("pt-BR");
+}
+
+function classificarTipoEquipamentoDasa(equipamento: string): TipoEquipamentoDasa | "" {
+  const valor = normalizarClassificacao(equipamento);
+  if (!valor) return "";
+  return TIPOS_EQUIPAMENTO_DASA.find((tipo) => (
+    tipo !== "Outro" && normalizarClassificacao(tipo) === valor
+  )) || "";
+}
+
 export function mapChamadoParaRatDasa(
   chamado: Chamado,
   opcoes: OpcoesMapeamentoRatDasa = {},
 ): RatDasaSnapshotV1 {
-  const unidadeSugerida = chamado.equipamento?.trim() || "";
   const tecnico = opcoes.tecnico;
+  const tipoEquipamento = classificarTipoEquipamentoDasa(chamado.equipamento || "");
+  const unidadeNome = chamado.unidade_nome?.trim() || "";
 
   return {
     modelo: "dasa-v1",
     schema_versao: 1,
     local: {
-      unidade_nome: unidadeSugerida,
-      unidade_nome_origem: unidadeSugerida ? "EQUIPAMENTO_SUGERIDO" : "NAO_IDENTIFICADA",
+      unidade_nome: unidadeNome,
+      unidade_nome_origem: unidadeNome ? "INFORMADO" : "NAO_IDENTIFICADA",
       marca: "",
       solicitante: chamado.contato || "",
       setor: "",
@@ -96,7 +116,7 @@ export function mapChamadoParaRatDasa(
       service_tag_serial: chamado.numero_serie || "",
       marca: chamado.fabricante || "",
       modelo: chamado.modelo || "",
-      tipo: "",
+      tipo: tipoEquipamento,
       tipo_outro: "",
     },
     atendimento: {

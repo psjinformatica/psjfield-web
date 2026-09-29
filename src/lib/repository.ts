@@ -77,7 +77,7 @@ export async function buscarChamado(id: number): Promise<Chamado | null> {
     const linhas = await sql<Chamado[]>`
     SELECT id, numero_chamado, empresa_parceira, cliente, projeto, assunto_email,
            remetente, destinatario, data_email, data_agendada, hora_agendada,
-           usuario_responsavel, contato, telefone, endereco, cidade, estado,
+           usuario_responsavel, contato, telefone, unidade_nome, endereco, cidade, estado,
            atividade, descricao, equipamento, fabricante, modelo, patrimonio_ae,
            numero_serie, valor_base, horas_incluidas, valor_hora_adicional,
            status, observacoes, hora_chegada, hora_inicio, hora_termino,
@@ -251,7 +251,7 @@ export async function buscarPorHash(hash: string) {
 const colunasImportacao = [
   "numero_chamado", "empresa_parceira", "cliente", "projeto", "assunto_email",
   "remetente", "destinatario", "data_email", "data_agendada", "hora_agendada",
-  "usuario_responsavel", "contato", "telefone", "endereco", "cidade", "estado",
+  "usuario_responsavel", "contato", "telefone", "unidade_nome", "endereco", "cidade", "estado",
   "atividade", "descricao", "equipamento", "fabricante", "modelo", "patrimonio_ae",
   "numero_serie", "valor_base", "horas_incluidas", "valor_hora_adicional", "status",
   "observacoes", "caminho_email", "hash_email", "corpo_email", "criado_em", "atualizado_em",
