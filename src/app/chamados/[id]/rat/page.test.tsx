@@ -163,4 +163,30 @@ describe("seleção do formulário de RAT", () => {
     expect(html).not.toContain("Conteúdo exclusivo Claro");
     expect(html).toContain("Técnico Exemplo");
   });
+
+  it("não deixa a revisão DASA antiga restaurar endereço e unidade corrigidos no chamado", async () => {
+    const revisaoDasa = criarRatDasaValida();
+    revisaoDasa.local.endereco = "Avenida Presindente Kennedy 4121";
+    revisaoDasa.local.unidade_nome = "Unidade antiga";
+    revisaoDasa.atendimento.defeito_constatado = "Diagnóstico preservado";
+    dependencias.buscarChamado.mockResolvedValue({
+      ...chamadoSimulacaoRatDasa,
+      endereco: "Avenida Presidente Kennedy, 4121",
+      unidade_nome: "Unidade corrigida",
+    });
+    dependencias.buscarTecnico.mockResolvedValue(tecnicoDasaSeguro);
+    dependencias.listarRats.mockResolvedValue([{
+      id: "dasa-v1", chamado_id: 20, versao: 1, caminho_pdf: "20/rat.pdf", hash_pdf: "a".repeat(64),
+      tecnico: "", status_rat: "Gerada", atual: true, gerado_em: "2026-09-15T12:00:00Z",
+      dados_revisao: revisaoDasa, modelo_rat: "dasa", modelo_versao: 1, schema_versao: 1,
+    } satisfies RatRegistro]);
+
+    const pagina = await PrepararRat({ params: Promise.resolve({ id: "20" }), searchParams: Promise.resolve({}) });
+    const html = renderToStaticMarkup(pagina);
+    expect(html).toContain("Avenida Presidente Kennedy, 4121");
+    expect(html).toContain("Unidade corrigida");
+    expect(html).not.toContain("Avenida Presindente Kennedy 4121");
+    expect(html).not.toContain("Unidade antiga");
+    expect(html).toContain("Diagnóstico preservado");
+  });
 });

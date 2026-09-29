@@ -12,12 +12,14 @@ function corpoFuncao(fonte: string, nome: string) {
 describe("cobertura da serialização central do banco", () => {
   it("protege as unidades transacionais críticas uma única vez por operação pública", async () => {
     const repository = await readFile(new URL("./repository.ts", import.meta.url), "utf8");
+    const edicao = await readFile(new URL("./chamados-edicao-repository.ts", import.meta.url), "utf8");
     const rats = await readFile(new URL("./rat-repository.ts", import.meta.url), "utf8");
     const operacoes = [
       [corpoFuncao(repository, "importarChamado"), "importacao.confirmar"],
       [corpoFuncao(repository, "finalizarChamado"), "atendimento.finalizar"],
       [corpoFuncao(repository, "criarNovaVisita"), "chamados.criarVisita"],
       [corpoFuncao(rats, "registrarRat"), "rats.registrarVersao"],
+      [corpoFuncao(edicao, "editarDadosChamado"), "chamados.editarDados"],
     ] as const;
 
     for (const [corpo, nome] of operacoes) {
@@ -37,7 +39,7 @@ describe("cobertura da serialização central do banco", () => {
   });
 
   it("não deixa acessos diretos restantes fora do wrapper nos repositories", async () => {
-    const arquivos = ["repository.ts", "rat-repository.ts", "financeiro-repository.ts", "assinaturas-repository.ts"];
+    const arquivos = ["repository.ts", "chamados-edicao-repository.ts", "rat-repository.ts", "financeiro-repository.ts", "assinaturas-repository.ts"];
     for (const arquivo of arquivos) {
       const fonte = await readFile(new URL(`./${arquivo}`, import.meta.url), "utf8");
       const funcoes = fonte.split(/(?=export async function )/).filter((trecho) => trecho.startsWith("export async function "));

@@ -11,6 +11,12 @@ import type {
   NovaVisitaInput,
   ReaberturaInput,
 } from "@/lib/types";
+import {
+  CAMPOS_COMPARTILHAVEIS_VISITAS,
+  camposAlterados,
+  dadosEditaveisDoChamado,
+  type SolicitacaoEdicaoChamado,
+} from "@/lib/chamados-edicao";
 
 function importacao(hash = "hash-1"): ChamadoImportacao {
   return {
@@ -59,7 +65,8 @@ class GatewayMemoria implements ChamadosGateway {
   falhar = false;
   reaberturas: Array<{ chamado_id: number; status_anterior: string; motivo: string }> = [];
   assinaturaCliente = "assinatura-preservada.png";
-  ratAtual = { versao: 1, atual: true, caminho: "rat-v1.pdf" };
+  ratAtual = { versao: 1, atual: true, caminho: "rat-v1.pdf", hash: "a".repeat(64), bytes: "pdf-v1" };
+  recebivel = { valor_total: 100, previsao: "2026-10-15", situacao: "A_RECEBER" };
 
   async listar(): Promise<ChamadoResumo[]> {
     if (this.falhar) throw new Error("Banco indisponível");
@@ -162,6 +169,41 @@ class GatewayMemoria implements ChamadosGateway {
     });
     this.visualizacoes.set(novoId, null);
     return { id: novoId, visita_numero };
+  }
+  async buscarContextoEdicao(id: number) {
+    const chamado = this.registros.get(id);
+    if (!chamado) return null;
+    const raiz = chamado.chamado_raiz_id ?? chamado.id;
+    const quantidadeVisitas = [...this.registros.values()]
+      .filter((registro) => registro.id === raiz || registro.chamado_raiz_id === raiz).length;
+    return {
+      chamado,
+      possui_recebivel: false,
+      quantidade_visitas: quantidadeVisitas,
+      versao_dados: "a".repeat(64),
+      versao_grupo: "b".repeat(64),
+      alteracoes: [],
+    };
+  }
+  async editarDados(id: number, entrada: SolicitacaoEdicaoChamado) {
+    const atual = this.registros.get(id);
+    if (!atual) throw new Error("Chamado não encontrado.");
+    const mudancas = camposAlterados(dadosEditaveisDoChamado(atual), entrada.dados);
+    const raiz = atual.chamado_raiz_id ?? atual.id;
+    for (const [registroId, registro] of this.registros) {
+      if (registroId === id) {
+        this.registros.set(registroId, { ...registro, ...entrada.dados });
+      } else if (
+        entrada.escopo === "TODAS_VISITAS_RELACIONADAS"
+        && (registro.id === raiz || registro.chamado_raiz_id === raiz)
+      ) {
+        const compartilhados = Object.fromEntries(CAMPOS_COMPARTILHAVEIS_VISITAS
+          .filter((campo) => mudancas.includes(campo))
+          .map((campo) => [campo, entrada.dados[campo]]));
+        this.registros.set(registroId, { ...registro, ...compartilhados });
+      }
+    }
+    return { alterados: 1, campos_alterados: mudancas };
   }
   async buscarHash(hash: string) {
     const chamado_id = this.hashes.get(hash);
@@ -453,6 +495,58 @@ describe("ChamadosService", () => {
     await expect(service.criarVisita(dasa, {
       data_agendada: "2026-09-29", hora_agendada: "09:30", unidade_nome: " ",
     })).rejects.toThrow("Unidade/Nome");
+  });
+
+  it.each(["Agendado", "Em atendimento", "Concluído", "Improdutivo"])(
+    "edita cadastro em status %s sem mudar status, RAT ou Financeiro",
+    async (status) => {
+      const gateway = new GatewayMemoria();
+      const service = new ChamadosService(gateway);
+      const id = await service.importar(importacao(), "teste.eml");
+      gateway.registros.set(id, { ...(await service.buscar(id))!, status });
+      const ratAntes = structuredClone(gateway.ratAtual);
+      const financeiroAntes = structuredClone(gateway.recebivel);
+      const contexto = await service.buscarContextoEdicao(id);
+      await service.editarDados(id, {
+        dados: { ...dadosEditaveisDoChamado(contexto!.chamado), unidade_nome: "Unidade corrigida", endereco: "Endereço corrigido" },
+        escopo: "SOMENTE_ESTA_VISITA",
+        versao_dados: contexto!.versao_dados,
+        versao_grupo: contexto!.versao_grupo,
+      });
+
+      expect(await service.buscar(id)).toMatchObject({ status, unidade_nome: "Unidade corrigida", endereco: "Endereço corrigido" });
+      expect(gateway.ratAtual).toEqual(ratAntes);
+      expect(gateway.recebivel).toEqual(financeiroAntes);
+    },
+  );
+
+  it("permite escolher entre somente a visita e todas as relacionadas", async () => {
+    const gateway = new GatewayMemoria();
+    const service = new ChamadosService(gateway);
+    const raiz = await service.importar({ ...importacao(), cliente: "DASA", endereco: "Antigo" }, "dasa.eml");
+    gateway.registros.set(raiz, { ...(await service.buscar(raiz))!, status: "Concluído" });
+    const visita2 = await service.criarVisita(raiz, { data_agendada: "2026-09-29", hora_agendada: "09:30", unidade_nome: "Unidade" });
+
+    let contexto = await service.buscarContextoEdicao(visita2.id);
+    await service.editarDados(visita2.id, {
+      dados: { ...dadosEditaveisDoChamado(contexto!.chamado), endereco: "Só visita 2" },
+      escopo: "SOMENTE_ESTA_VISITA",
+      versao_dados: contexto!.versao_dados,
+      versao_grupo: contexto!.versao_grupo,
+    });
+    expect((await service.buscar(raiz))?.endereco).toBe("Antigo");
+    expect((await service.buscar(visita2.id))?.endereco).toBe("Só visita 2");
+
+    contexto = await service.buscarContextoEdicao(visita2.id);
+    await service.editarDados(visita2.id, {
+      dados: { ...dadosEditaveisDoChamado(contexto!.chamado), endereco: "Todas as visitas", observacoes: "Só ocorrência" },
+      escopo: "TODAS_VISITAS_RELACIONADAS",
+      versao_dados: contexto!.versao_dados,
+      versao_grupo: contexto!.versao_grupo,
+    });
+    expect((await service.buscar(raiz))?.endereco).toBe("Todas as visitas");
+    expect((await service.buscar(raiz))?.observacoes).toBe("");
+    expect(await service.buscar(visita2.id)).toMatchObject({ endereco: "Todas as visitas", observacoes: "Só ocorrência" });
   });
 
   it("impede duplicidade, exclui e permite reimportação", async () => {

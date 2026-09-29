@@ -82,6 +82,8 @@ describe("detalhe do chamado", () => {
     expect(html).toContain("ZEBRA");
     expect(html).toContain("Zebra ZD220T");
     expect(html).toContain("D5N220400706");
+    expect(html).toContain('href="/chamados/25/editar"');
+    expect(html).toContain("Editar dados do chamado");
   });
 
   it("oculta a linha de unidade quando o valor é nulo", async () => {

@@ -20,6 +20,8 @@ import {
   ratCompativelComModelo,
   ultimaRevisaoClaroCompativel,
   ultimaRevisaoDasaCompativel,
+  mesclarRevisaoClaroComCadastroAtual,
+  mesclarRevisaoDasaComCadastroAtual,
 } from "@/lib/rat-versioning";
 
 export const dynamic = "force-dynamic";
@@ -53,14 +55,17 @@ export default async function PrepararRat({
         : await ratService.listar(chamadoId);
       const versoesDasa = versoes.filter((rat) => ratCompativelComModelo(rat, "dasa-v1"));
       const revisaoAnterior = ultimaRevisaoDasaCompativel(versoes);
-      const inicial = revisaoAnterior ? {
-        ...revisaoAnterior,
+      const revisaoMesclada = revisaoAnterior
+        ? mesclarRevisaoDasaComCadastroAtual(inicialMapeado, revisaoAnterior)
+        : null;
+      const inicial = revisaoMesclada ? {
+        ...revisaoMesclada,
         cliente: {
-          ...revisaoAnterior.cliente,
+          ...revisaoMesclada.cliente,
           assinatura_cliente: null,
         },
         tecnico: {
-          ...revisaoAnterior.tecnico,
+          ...revisaoMesclada.tecnico,
           nome_tecnico: inicialMapeado.tecnico.nome_tecnico,
           assinatura_tecnico: null,
         },
@@ -94,7 +99,7 @@ export default async function PrepararRat({
     const inicialMapeado = mapearChamadoParaRat(chamado, cliente);
     const revisaoAnterior = ultimaRevisaoClaroCompativel(versoes);
     const inicial = revisaoAnterior
-      ? { ...inicialMapeado, ...revisaoAnterior }
+      ? mesclarRevisaoClaroComCadastroAtual(inicialMapeado, revisaoAnterior)
       : inicialMapeado;
     return <main className="page-shell detail-page">
     <Link className="back-link" href={`/chamados/${chamadoId}`}><ArrowLeft size={18} />Voltar ao chamado</Link>

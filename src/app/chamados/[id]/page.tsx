@@ -1,4 +1,4 @@
-import { ArrowLeft, CalendarDays, FileText, MapPin, Phone, Wrench } from "lucide-react";
+import { ArrowLeft, CalendarDays, FileText, MapPin, Pencil, Phone, Wrench } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -54,6 +54,10 @@ export default async function DetalheChamado({ params }: { params: Promise<{ id:
         </div>
         {chamado.valor_base && <strong className="detail-price">{formatarMoeda(chamado.valor_base)}</strong>}
       </header>
+
+      <div className="detail-record-actions">
+        <Link className="secondary-button" href={`/chamados/${chamado.id}/editar`}><Pencil size={17} />Editar dados do chamado</Link>
+      </div>
 
       <ChamadoVisitas atualId={chamado.id} visitas={visitas} />
 

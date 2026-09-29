@@ -49,3 +49,55 @@ export function ultimaRevisaoDasaCompativel(registros: RatRegistro[]): RatDasaSn
   const registro = registros.find((item) => ratCompativelComModelo(item, "dasa-v1"));
   return registro ? registro.dados_revisao as RatDasaSnapshotV1 : null;
 }
+
+export function mesclarRevisaoDasaComCadastroAtual(
+  cadastro: RatDasaSnapshotV1,
+  revisao: RatDasaSnapshotV1,
+): RatDasaSnapshotV1 {
+  return {
+    ...revisao,
+    local: {
+      ...revisao.local,
+      unidade_nome: cadastro.local.unidade_nome,
+      unidade_nome_origem: cadastro.local.unidade_nome_origem,
+      solicitante: cadastro.local.solicitante,
+      endereco: cadastro.local.endereco,
+      cidade: cadastro.local.cidade,
+      estado: cadastro.local.estado,
+      telefone: cadastro.local.telefone,
+    },
+    equipamento: {
+      ...revisao.equipamento,
+      chamado_moebius: cadastro.equipamento.chamado_moebius,
+      patrimonio: cadastro.equipamento.patrimonio,
+      service_tag_serial: cadastro.equipamento.service_tag_serial,
+      marca: cadastro.equipamento.marca,
+      modelo: cadastro.equipamento.modelo,
+      tipo: cadastro.equipamento.tipo || revisao.equipamento.tipo,
+    },
+    atendimento: {
+      ...revisao.atendimento,
+      defeito_informado: cadastro.atendimento.defeito_informado,
+    },
+  };
+}
+
+export function mesclarRevisaoClaroComCadastroAtual(
+  cadastro: RatRevisao,
+  revisao: RatRevisao,
+): RatRevisao {
+  return {
+    ...cadastro,
+    ...revisao,
+    chamado: cadastro.chamado,
+    login: cadastro.login,
+    telefone: cadastro.telefone,
+    localidade: cadastro.localidade,
+    tipo_equipamento: cadastro.tipo_equipamento,
+    outro_equipamento: cadastro.outro_equipamento,
+    atual_serial: cadastro.atual_serial,
+    atual_ae: cadastro.atual_ae,
+    atual_fabricante: cadastro.atual_fabricante,
+    atual_modelo: cadastro.atual_modelo,
+  };
+}

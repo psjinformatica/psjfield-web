@@ -14,6 +14,11 @@ import type {
   VisitaResumo,
 } from "@/lib/types";
 import { resolverModeloRat } from "@/lib/rat-models";
+import {
+  validarSolicitacaoEdicaoChamado,
+  type ContextoEdicaoChamado,
+  type SolicitacaoEdicaoChamado,
+} from "@/lib/chamados-edicao";
 import { validarAtendimento, validarFinalizacao, validarNovaVisita, validarReabertura } from "@/lib/validation";
 
 export interface ChamadosGateway {
@@ -25,6 +30,11 @@ export interface ChamadosGateway {
   finalizar(id: number, dados: FinalizacaoInput): Promise<ChamadoFinalizado>;
   reabrir(id: number, dados: ReaberturaInput): Promise<ChamadoReaberto>;
   criarVisita(id: number, dados: NovaVisitaInput): Promise<NovaVisitaCriada>;
+  buscarContextoEdicao(id: number): Promise<ContextoEdicaoChamado | null>;
+  editarDados(id: number, dados: SolicitacaoEdicaoChamado): Promise<{
+    alterados: number;
+    campos_alterados: string[];
+  }>;
   buscarHash(hash: string): Promise<ChamadoDuplicado | null>;
   importar(chamado: ChamadoImportacao, nomeArquivo: string): Promise<number>;
   excluir(id: number): Promise<void>;
@@ -82,6 +92,16 @@ export class ChamadosService {
       throw new Error("A nova visita exige um chamado DASA encerrado.");
     }
     return this.gateway.criarVisita(id, validarNovaVisita(entrada));
+  }
+
+  buscarContextoEdicao(id: number) {
+    if (!Number.isSafeInteger(id) || id <= 0) throw new Error("Chamado inválido.");
+    return this.gateway.buscarContextoEdicao(id);
+  }
+
+  editarDados(id: number, entrada: unknown) {
+    if (!Number.isSafeInteger(id) || id <= 0) throw new Error("Chamado inválido.");
+    return this.gateway.editarDados(id, validarSolicitacaoEdicaoChamado(entrada));
   }
 
   async importar(chamado: ChamadoImportacao, nomeArquivo: string) {

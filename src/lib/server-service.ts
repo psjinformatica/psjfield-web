@@ -1,6 +1,7 @@
 import "server-only";
 
 import { ChamadosService, type ChamadosGateway } from "@/lib/chamados-service";
+import { buscarContextoEdicaoChamado, editarDadosChamado } from "@/lib/chamados-edicao-repository";
 import {
   atualizarAtendimento,
   buscarChamado,
@@ -24,6 +25,8 @@ const gateway: ChamadosGateway = {
   finalizar: finalizarChamado,
   reabrir: reabrirChamado,
   criarVisita: criarNovaVisita,
+  buscarContextoEdicao: buscarContextoEdicaoChamado,
+  editarDados: editarDadosChamado,
   buscarHash: buscarPorHash,
   importar: importarChamado,
   excluir: excluirChamado,
