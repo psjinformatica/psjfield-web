@@ -101,6 +101,25 @@ describe("seleção do formulário de RAT", () => {
     await renderizacao;
   });
 
+  it("leva a unidade da própria visita derivada para a preparação DASA", async () => {
+    const unidadeVisita2 = "FRISCHMANN | Unidade | D279 | FS - PALLADIUM";
+    dependencias.buscarChamado.mockResolvedValue({
+      ...chamadoSimulacaoRatDasa,
+      id: 25,
+      visita_numero: 2,
+      chamado_raiz_id: 24,
+      unidade_nome: unidadeVisita2,
+      equipamento: "Etiquetadora",
+    });
+    dependencias.buscarTecnico.mockResolvedValue(tecnicoDasaSeguro);
+
+    const pagina = await PrepararRat({ params: Promise.resolve({ id: "25" }), searchParams: Promise.resolve({}) });
+    const html = renderToStaticMarkup(pagina);
+
+    expect(html).toContain(`value="${unidadeVisita2}"`);
+    expect(html).toContain("Etiquetadora");
+  });
+
   it("executa chamado, cliente e versões Claro estritamente em sequência", async () => {
     const chamadoClaro = { ...chamadoSimulacaoRatDasa, cliente: "Claro" };
     const chamado = criarOperacaoPendente<typeof chamadoClaro>();

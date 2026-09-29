@@ -65,6 +65,7 @@ export default async function DetalheChamado({ params }: { params: Promise<{ id:
           <div><Phone /><span>{chamado.contato || "Contato não informado"}<small>{chamado.telefone || "Telefone não informado"}</small></span></div>
         </div>
         <div className="data-grid">
+          {chamado.unidade_nome?.trim() ? <div className="data-item chamado-unidade"><span>Unidade</span><strong>{chamado.unidade_nome}</strong></div> : null}
           <Dado rotulo="Cliente" valor={chamado.cliente} />
           <Dado rotulo="Projeto" valor={chamado.projeto} />
           <Dado rotulo="Atividade" valor={chamado.atividade} />
