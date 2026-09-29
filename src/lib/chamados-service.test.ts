@@ -8,6 +8,7 @@ import type {
   ChamadoImportacao,
   ChamadoResumo,
   FinalizacaoInput,
+  NovaVisitaInput,
   ReaberturaInput,
 } from "@/lib/types";
 
@@ -117,6 +118,34 @@ class GatewayMemoria implements ChamadosGateway {
     this.registros.set(id, { ...atual, status: "Em atendimento" });
     return { status: "Em atendimento" as const, reaberto_em: "2026-08-03T13:00:00.000Z" };
   }
+  async criarVisita(id: number, dados: NovaVisitaInput) {
+    const fonte = this.registros.get(id);
+    if (!fonte) throw new Error("Chamado não encontrado.");
+    const raiz = fonte.chamado_raiz_id ?? fonte.id;
+    const visita_numero = Math.max(
+      ...[...this.registros.values()]
+        .filter((registro) => registro.id === raiz || registro.chamado_raiz_id === raiz)
+        .map((registro) => registro.visita_numero),
+    ) + 1;
+    const novoId = this.proximoId++;
+    this.registros.set(novoId, {
+      ...fonte,
+      id: novoId,
+      visita_numero,
+      chamado_raiz_id: raiz,
+      data_agendada: dados.data_agendada,
+      hora_agendada: dados.hora_agendada,
+      unidade_nome: dados.unidade_nome,
+      status: "Agendado",
+      hora_chegada: "",
+      hora_inicio: "",
+      hora_termino: "",
+      descricao_servico: "",
+      observacoes_atendimento: "",
+    });
+    this.visualizacoes.set(novoId, null);
+    return { id: novoId, visita_numero };
+  }
   async buscarHash(hash: string) {
     const chamado_id = this.hashes.get(hash);
     const chamado = chamado_id ? this.registros.get(chamado_id) : null;
@@ -137,6 +166,8 @@ class GatewayMemoria implements ChamadosGateway {
     this.registros.set(id, {
       ...chamado,
       id,
+      visita_numero: 1,
+      chamado_raiz_id: null,
       hora_chegada: "",
       hora_inicio: "",
       hora_termino: "",
@@ -304,6 +335,69 @@ describe("ChamadosService", () => {
     const service = new ChamadosService(gateway);
     const id = await service.importar({ ...importacao(), status: "", data_agendada: "", hora_agendada: "" }, "teste.eml");
     expect((await service.buscar(id))?.status).toBe("Agendado");
+  });
+
+  it("cria Visita 2 DASA independente e preserva a ocorrência original", async () => {
+    const gateway = new GatewayMemoria();
+    const service = new ChamadosService(gateway);
+    const id = await service.importar({
+      ...importacao(),
+      numero_chamado: "SR-906366",
+      cliente: "DASA",
+      equipamento: "Etiquetadora",
+      unidade_nome: null,
+    }, "dasa.eml");
+    gateway.registros.set(id, {
+      ...(await service.buscar(id))!,
+      status: "Improdutivo",
+      hora_inicio: "15:00",
+      hora_termino: "15:10",
+      descricao_servico: "Diagnóstico da primeira visita",
+      observacoes_atendimento: "Visita anterior",
+    });
+
+    const criada = await service.criarVisita(id, {
+      data_agendada: "2026-09-29",
+      hora_agendada: "09:30",
+      unidade_nome: "Unidade DASA Teste",
+    });
+
+    expect(criada).toEqual({ id: 2, visita_numero: 2 });
+    expect(await service.buscar(id)).toMatchObject({
+      status: "Improdutivo", hora_inicio: "15:00", descricao_servico: "Diagnóstico da primeira visita",
+    });
+    expect(await service.buscar(criada.id)).toMatchObject({
+      numero_chamado: "SR-906366",
+      visita_numero: 2,
+      chamado_raiz_id: id,
+      status: "Agendado",
+      data_agendada: "2026-09-29",
+      hora_agendada: "09:30",
+      unidade_nome: "Unidade DASA Teste",
+      equipamento: "Etiquetadora",
+      hora_chegada: "",
+      hora_inicio: "",
+      hora_termino: "",
+      descricao_servico: "",
+      observacoes_atendimento: "",
+    });
+    expect(await service.buscarHash("hash-1")).toMatchObject({ chamado_id: id });
+  });
+
+  it("exige unidade e restringe nova visita a DASA encerrado", async () => {
+    const gateway = new GatewayMemoria();
+    const service = new ChamadosService(gateway);
+    const claro = await service.importar(importacao(), "claro.eml");
+    gateway.registros.set(claro, { ...(await service.buscar(claro))!, status: "Concluído" });
+    await expect(service.criarVisita(claro, {
+      data_agendada: "2026-09-29", hora_agendada: "09:30", unidade_nome: "Unidade",
+    })).rejects.toThrow("somente para chamados DASA");
+
+    const dasa = await service.importar({ ...importacao("hash-2"), cliente: "DASA" }, "dasa.eml");
+    gateway.registros.set(dasa, { ...(await service.buscar(dasa))!, status: "Improdutivo" });
+    await expect(service.criarVisita(dasa, {
+      data_agendada: "2026-09-29", hora_agendada: "09:30", unidade_nome: " ",
+    })).rejects.toThrow("Unidade/Nome");
   });
 
   it("impede duplicidade, exclui e permite reimportação", async () => {

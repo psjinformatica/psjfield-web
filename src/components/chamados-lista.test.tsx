@@ -11,6 +11,8 @@ function chamado(
   return {
     id: 20,
     numero_chamado: "SR-855635",
+    visita_numero: 1,
+    chamado_raiz_id: null,
     status: "Agendado",
     data_agendada: "2026-09-15",
     hora_agendada: "09:00",
@@ -62,5 +64,20 @@ describe("ChamadosLista", () => {
     );
     expect(html).toContain("Financeiro pendente");
     expect(html).not.toContain("R$\u00a0100,00");
+  });
+
+  it("identifica Visita 2 sem alterar o número externo", () => {
+    const html = renderToStaticMarkup(<ChamadosLista chamados={[chamado(null, {
+      numero_chamado: "SR-906366",
+      cliente: "DASA Chamado para atendimento",
+      visita_numero: 2,
+      chamado_raiz_id: 24,
+      data_agendada: "2026-09-29",
+      hora_agendada: "09:30",
+    })]} />);
+    expect(html).toContain("SR-906366");
+    expect(html).toContain("DASA • Visita 2");
+    expect(html).toContain("29/09/2026");
+    expect(html).toContain("09:30");
   });
 });

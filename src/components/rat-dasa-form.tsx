@@ -126,11 +126,12 @@ function GradeChecks<T extends Record<string, boolean>>({ valores, rotulos, onCh
     <label key={String(chave)}><input type="checkbox" checked={valores[chave]} onChange={(evento) => onChange(chave, evento.target.checked)} />{rotulos[chave]}</label>)}</div>;
 }
 
-export function RatDasaForm({ chamadoId, inicial, persistenciaHabilitada = false, versoes = [] }: {
+export function RatDasaForm({ chamadoId, inicial, persistenciaHabilitada = false, versoes = [], visitaNumero = 1 }: {
   chamadoId: number;
   inicial: RatDasaSnapshotV1;
   persistenciaHabilitada?: boolean;
   versoes?: RatRegistro[];
+  visitaNumero?: number;
 }) {
   const router = useRouter();
   const [dados, setDados] = useState(inicial);
@@ -293,6 +294,6 @@ export function RatDasaForm({ chamadoId, inicial, persistenciaHabilitada = false
 
     {urlPrevia ? <section className="detail-card dasa-preview" aria-live="polite"><div className="section-heading"><span>PDF</span><div><h2>Prévia local</h2><p>Este arquivo existe apenas nesta sessão do navegador.</p></div></div><a className="secondary-button" href={urlPrevia} target="_blank" rel="noreferrer"><ExternalLink size={17} />Abrir prévia em nova aba</a><iframe title="Prévia da RAT DASA" src={urlPrevia} /></section> : null}
     {versoes.length > 0 ? <section className="detail-card"><div className="section-heading"><span>PDF</span><div><h2>Versões DASA geradas</h2><p>Cada arquivo permanece preservado.</p></div></div><div className="rat-versions">{versoes.map((rat) =>
-      <div key={rat.id}><strong>Versão {rat.versao}{rat.atual ? " · Atual" : ""}</strong><span>{new Date(rat.gerado_em).toLocaleString("pt-BR")}</span><RatArquivoAcoes chamadoId={chamadoId} ratId={rat.id} nomeArquivo={nomeArquivoRat(dados.equipamento.chamado_moebius, rat.versao)} /></div>)}</div></section> : null}
+      <div key={rat.id}><strong>Versão {rat.versao}{rat.atual ? " · Atual" : ""}</strong><span>{new Date(rat.gerado_em).toLocaleString("pt-BR")}</span><RatArquivoAcoes chamadoId={chamadoId} ratId={rat.id} nomeArquivo={nomeArquivoRat(dados.equipamento.chamado_moebius, rat.versao, visitaNumero)} /></div>)}</div></section> : null}
   </>;
 }

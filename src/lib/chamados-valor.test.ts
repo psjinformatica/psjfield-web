@@ -22,6 +22,8 @@ function chamado(id: number, valor_card: string): ChamadoResumo {
   return {
     id,
     numero_chamado: id === 20 ? "SR-855635" : `MI-${id}`,
+    visita_numero: 1,
+    chamado_raiz_id: null,
     status: "Concluído",
     data_agendada: "2026-09-15",
     hora_agendada: "09:00",
@@ -39,6 +41,20 @@ function chamado(id: number, valor_card: string): ChamadoResumo {
 }
 
 describe("valor financeiro nos cards de chamados", () => {
+  it("mantém Visita 2 agendada na ordenação cronológica normal", () => {
+    const visita2 = {
+      ...chamado(25, "100.00"),
+      numero_chamado: "SR-906366",
+      visita_numero: 2,
+      chamado_raiz_id: 24,
+      status: "Agendado",
+      data_agendada: "2026-09-29",
+      hora_agendada: "09:30",
+    };
+    const encerrado = { ...chamado(24, "100.00"), status: "Improdutivo" };
+    expect(ordenarChamados([encerrado, visita2])[0]).toMatchObject({ id: 25, visita_numero: 2 });
+  });
+
   it.each(["100.00", "130.00", "160.00"])(
     "prioriza valor_total do recebível: %s",
     (valorTotal) => {

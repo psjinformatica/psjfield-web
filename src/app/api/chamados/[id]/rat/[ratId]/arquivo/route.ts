@@ -9,7 +9,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     try {
       const { rat, chamado, bytes } = await ratService.baixar(Number(id), ratId);
       const download = new URL(request.url).searchParams.get("download") === "1";
-      const nomeArquivo = nomeArquivoRat(chamado.numero_chamado, rat.versao);
+      const nomeArquivo = nomeArquivoRat(chamado.numero_chamado, rat.versao, chamado.visita_numero);
       return new NextResponse(Buffer.from(bytes), { headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `${download ? "attachment" : "inline"}; filename="${nomeArquivo}"`,

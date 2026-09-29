@@ -23,6 +23,8 @@ function comoChamado(importado: Awaited<ReturnType<typeof interpretarEml>>["cham
   return {
     ...importado,
     id: 900001,
+    visita_numero: 1,
+    chamado_raiz_id: null,
     hora_chegada: "",
     hora_inicio: "",
     hora_termino: "",

@@ -19,7 +19,7 @@ export default async function VisualizarRat({ params }: { params: Promise<{ id: 
     const rat = versoes.find((item) => item.id === ratId);
     if (!chamado || !rat) notFound();
     const arquivoUrl = `/api/chamados/${chamadoId}/rat/${ratId}/arquivo`;
-    const nomeArquivo = nomeArquivoRat(chamado.numero_chamado, rat.versao);
+    const nomeArquivo = nomeArquivoRat(chamado.numero_chamado, rat.versao, chamado.visita_numero);
     return <main className="page-shell rat-viewer-page">
     <Link className="back-link" href={`/chamados/${chamadoId}`}><ArrowLeft size={18} />Voltar ao chamado</Link>
     <header className="rat-viewer-header">

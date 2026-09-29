@@ -17,7 +17,7 @@ function Campo({ nome, rotulo, valor = "", tipo = "text" }: { nome: keyof RatRev
 const camposEquipamento = ["serial", "ae", "fabricante", "modelo", "processador", "hd", "hostname", "memoria"] as const;
 const rotulosEquipamento = ["Serial", "AE", "Fabricante", "Modelo", "Processador", "HD/SSD", "Hostname", "Memória"];
 
-export function RatForm({ chamadoId, status, inicial, versoes }: { chamadoId: number; status: string; inicial: RatRevisao; versoes: RatRegistro[] }) {
+export function RatForm({ chamadoId, status, inicial, versoes, visitaNumero = 1 }: { chamadoId: number; status: string; inicial: RatRevisao; versoes: RatRegistro[]; visitaNumero?: number }) {
   const router = useRouter();
   const [pendente, setPendente] = useState(false);
   const [feedback, setFeedback] = useState<{ erro?: string; sucesso?: string }>({});
@@ -71,6 +71,6 @@ export function RatForm({ chamadoId, status, inicial, versoes }: { chamadoId: nu
       <button className="primary-button" disabled={pendente}>{pendente ? <><LoaderCircle className="spin" size={17} />Gerando...</> : <><FileDown size={17} />Gerar RAT em PDF</>}</button>
     </form>
     {versoes.length > 0 && <section className="detail-card"><div className="section-heading"><span>PDF</span><div><h2>Versões geradas</h2><p>A versão anterior é preservada.</p></div></div><div className="rat-versions">{versoes.map((rat) =>
-      <div key={rat.id}><strong>Versão {rat.versao}{rat.atual ? " · Atual" : ""}</strong><span>{new Date(rat.gerado_em).toLocaleString("pt-BR")}</span><RatArquivoAcoes chamadoId={chamadoId} ratId={rat.id} nomeArquivo={nomeArquivoRat(inicial.chamado, rat.versao)} /></div>)}</div></section>}
+      <div key={rat.id}><strong>Versão {rat.versao}{rat.atual ? " · Atual" : ""}</strong><span>{new Date(rat.gerado_em).toLocaleString("pt-BR")}</span><RatArquivoAcoes chamadoId={chamadoId} ratId={rat.id} nomeArquivo={nomeArquivoRat(inicial.chamado, rat.versao, visitaNumero)} /></div>)}</div></section>}
   </>;
 }

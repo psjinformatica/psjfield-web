@@ -13,7 +13,10 @@ import type {
   FinalizacaoInput,
   ChamadoReaberto,
   ReaberturaInput,
+  NovaVisitaCriada,
+  NovaVisitaInput,
 } from "@/lib/types";
+import { resolverModeloRat } from "@/lib/rat-models";
 import { horarioAtualSaoPaulo, statusEncerraAtendimento, statusGeraRecebimento } from "@/lib/status";
 import { colocarContaEmRevisao, registrarContaAutomatica } from "@/lib/financeiro-repository";
 import { ordenarChamados, type ChamadoOrdenavel } from "@/lib/chamados-order";
@@ -28,7 +31,8 @@ export async function listarChamados(): Promise<ChamadoResumo[]> {
   return observeDatabaseOperation("chamados.listar", async () => {
     const sql = getSql();
     const linhas = await sql<ChamadoLinhaListagem[]>`
-    SELECT c.id, c.numero_chamado, c.status, c.data_agendada, c.hora_agendada,
+    SELECT c.id, c.numero_chamado, c.visita_numero, c.chamado_raiz_id,
+           c.status, c.data_agendada, c.hora_agendada,
            c.cliente, c.projeto, c.cidade, c.estado, c.atividade, c.valor_base,
            c.visualizado_em, cr.valor_total AS valor_financeiro,
            cr.encerrado_em, c.atualizado_em
@@ -66,6 +70,8 @@ export async function listarChamados(): Promise<ChamadoResumo[]> {
         ...resumo,
         ...resolverValorCardChamado(resumo),
         id: Number(resumo.id),
+        visita_numero: Number(resumo.visita_numero),
+        chamado_raiz_id: resumo.chamado_raiz_id === null ? null : Number(resumo.chamado_raiz_id),
       };
     });
   });
@@ -75,7 +81,8 @@ export async function buscarChamado(id: number): Promise<Chamado | null> {
   return observeDatabaseOperation("chamados.buscarPorId", async () => {
     const sql = getSql();
     const linhas = await sql<Chamado[]>`
-    SELECT id, numero_chamado, empresa_parceira, cliente, projeto, assunto_email,
+    SELECT id, numero_chamado, visita_numero, chamado_raiz_id,
+           empresa_parceira, cliente, projeto, assunto_email,
            remetente, destinatario, data_email, data_agendada, hora_agendada,
            usuario_responsavel, contato, telefone, unidade_nome, endereco, cidade, estado,
            atividade, descricao, equipamento, fabricante, modelo, patrimonio_ae,
@@ -84,7 +91,12 @@ export async function buscarChamado(id: number): Promise<Chamado | null> {
            descricao_servico, observacoes_atendimento
     FROM chamados WHERE id = ${id}
   `;
-    return linhas[0] ? { ...linhas[0], id: Number(linhas[0].id) } : null;
+    return linhas[0] ? {
+      ...linhas[0],
+      id: Number(linhas[0].id),
+      visita_numero: Number(linhas[0].visita_numero),
+      chamado_raiz_id: linhas[0].chamado_raiz_id === null ? null : Number(linhas[0].chamado_raiz_id),
+    } : null;
   });
 }
 
@@ -236,6 +248,77 @@ export async function reabrirChamado(
   });
 }
 
+export async function criarNovaVisita(
+  chamadoId: number,
+  dados: NovaVisitaInput,
+): Promise<NovaVisitaCriada> {
+  return observeDatabaseOperation("chamados.criarVisita", async () => {
+    const sql = getSql();
+    return sql.begin(async (transacao) => {
+      const referencias = await transacao<{ id: number; chamado_raiz_id: number | null }[]>`
+        SELECT id, chamado_raiz_id FROM chamados WHERE id = ${chamadoId}
+      `;
+      const referencia = referencias[0];
+      if (!referencia) throw new Error("Chamado não encontrado.");
+      const raizId = Number(referencia.chamado_raiz_id ?? referencia.id);
+      await transacao`SELECT id FROM chamados WHERE id = ${raizId} FOR UPDATE`;
+
+      const fontes = await transacao<Chamado[]>`
+        SELECT id, numero_chamado, visita_numero, chamado_raiz_id,
+               empresa_parceira, cliente, projeto, assunto_email,
+               remetente, destinatario, data_email, data_agendada, hora_agendada,
+               usuario_responsavel, contato, telefone, unidade_nome, endereco, cidade, estado,
+               atividade, descricao, equipamento, fabricante, modelo, patrimonio_ae,
+               numero_serie, valor_base, horas_incluidas, valor_hora_adicional,
+               status, observacoes, hora_chegada, hora_inicio, hora_termino,
+               descricao_servico, observacoes_atendimento
+        FROM chamados
+        WHERE id = ${chamadoId}
+        FOR UPDATE
+      `;
+      const fonte = fontes[0];
+      if (!fonte) throw new Error("Chamado não encontrado.");
+      if (resolverModeloRat(fonte) !== "dasa-v1") {
+        throw new Error("Novas visitas estão disponíveis somente para chamados DASA.");
+      }
+      if (fonte.status !== "Concluído" && fonte.status !== "Improdutivo") {
+        throw new Error("A nova visita exige um chamado DASA encerrado.");
+      }
+
+      const visitas = await transacao<{ proxima: number }[]>`
+        SELECT COALESCE(MAX(visita_numero), 0)::int + 1 AS proxima
+        FROM chamados
+        WHERE id = ${raizId} OR chamado_raiz_id = ${raizId}
+      `;
+      const visitaNumero = visitas[0].proxima;
+      const agora = new Date().toISOString();
+      const inseridas = await transacao<{ id: number }[]>`
+        INSERT INTO chamados (
+          numero_chamado, visita_numero, chamado_raiz_id,
+          empresa_parceira, cliente, projeto, assunto_email,
+          remetente, destinatario, data_email, data_agendada, hora_agendada,
+          usuario_responsavel, contato, telefone, unidade_nome, endereco, cidade, estado,
+          atividade, descricao, equipamento, fabricante, modelo, patrimonio_ae,
+          numero_serie, valor_base, horas_incluidas, valor_hora_adicional,
+          status, observacoes, caminho_email, hash_email, corpo_email, criado_em, atualizado_em
+        )
+        SELECT
+          numero_chamado, ${visitaNumero}, ${raizId},
+          empresa_parceira, cliente, projeto, assunto_email,
+          remetente, destinatario, data_email, ${dados.data_agendada}, ${dados.hora_agendada},
+          usuario_responsavel, contato, telefone, ${dados.unidade_nome}, endereco, cidade, estado,
+          atividade, descricao, equipamento, fabricante, modelo, patrimonio_ae,
+          numero_serie, valor_base, horas_incluidas, valor_hora_adicional,
+          'Agendado', observacoes, caminho_email, hash_email, corpo_email, ${agora}, ${agora}
+        FROM chamados
+        WHERE id = ${chamadoId}
+        RETURNING id
+      `;
+      return { id: Number(inseridas[0].id), visita_numero: visitaNumero };
+    });
+  });
+}
+
 export async function buscarPorHash(hash: string) {
   const sql = getSql();
   const linhas = await sql<ChamadoDuplicado[]>`
@@ -283,17 +366,19 @@ export async function importarChamado(chamado: ChamadoImportacao, nomeArquivo: s
 export async function excluirChamado(id: number) {
   const sql = getSql();
   return sql.begin(async (transacao) => {
-    const chamados = await transacao<{ id: number; hash_email: string }[]>`
-      SELECT id, hash_email FROM chamados WHERE id = ${id} FOR UPDATE
+    const chamados = await transacao<{ id: number; hash_email: string; visita_numero: number }[]>`
+      SELECT id, hash_email, visita_numero FROM chamados WHERE id = ${id} FOR UPDATE
     `;
     const chamado = chamados[0];
     if (!chamado) throw new Error("Chamado não encontrado.");
-    const emails = await transacao`
-      DELETE FROM emails_importados
-      WHERE chamado_id = ${id} AND hash_email = ${chamado.hash_email}
-      RETURNING id
-    `;
-    if (emails.count !== 1) throw new Error("Vínculo do e-mail não encontrado.");
+    if (Number(chamado.visita_numero) === 1) {
+      const emails = await transacao`
+        DELETE FROM emails_importados
+        WHERE chamado_id = ${id} AND hash_email = ${chamado.hash_email}
+        RETURNING id
+      `;
+      if (emails.count !== 1) throw new Error("Vínculo do e-mail não encontrado.");
+    }
     const removidos = await transacao`
       DELETE FROM chamados WHERE id = ${id} AND hash_email = ${chamado.hash_email}
       RETURNING id
