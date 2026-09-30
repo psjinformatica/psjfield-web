@@ -5,6 +5,7 @@ import type { ContaReceber } from "@/lib/financeiro-types";
 export interface FinanceiroGateway {
   listar(): Promise<ContaReceber[]>;
   marcarRecebida(id: string, valor: number, data: string): Promise<void>;
+  reverterRecebimento(id: string): Promise<void>;
 }
 
 const recebimentoSchema = z.object({
@@ -23,5 +24,10 @@ export class FinanceiroService {
     if (!z.string().uuid().safeParse(id).success) throw new Error("Conta inválida.");
     const dados = recebimentoSchema.parse(entrada);
     await this.gateway.marcarRecebida(id, dados.valor_recebido, dados.recebido_em);
+  }
+
+  async reverterRecebimento(id: string) {
+    if (!z.string().uuid().safeParse(id).success) throw new Error("Conta inválida.");
+    await this.gateway.reverterRecebimento(id);
   }
 }

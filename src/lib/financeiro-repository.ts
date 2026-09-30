@@ -222,3 +222,19 @@ export async function marcarContaRecebida(id: string, valorRecebido: number, rec
     if (!linhas[0]) throw new Error("Conta não encontrada, já recebida ou pendente de revisão.");
   });
 }
+
+export async function reverterContaRecebida(id: string) {
+  return observeDatabaseOperation("financeiro.reverterRecebimento", async () => {
+    const sql = getSql();
+    const linhas = await sql<Pick<ContaReceber, "id">[]>`
+      UPDATE contas_receber
+      SET situacao = CASE WHEN revisao_pendente THEN 'EM_REVISAO' ELSE 'A_RECEBER' END,
+          recebido_em = NULL,
+          valor_recebido = NULL,
+          atualizado_em = NOW()
+      WHERE id = ${id} AND situacao = 'RECEBIDO'
+      RETURNING id
+    `;
+    if (!linhas[0]) throw new Error("Conta não encontrada ou não está recebida.");
+  });
+}

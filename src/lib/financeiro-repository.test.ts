@@ -8,8 +8,10 @@ vi.mock("@/lib/db-observability", () => ({
 
 import { getSql } from "@/lib/db";
 import {
+  listarContasReceber,
   registrarContaAutomatica,
   repararContaAutomaticaAusente,
+  reverterContaRecebida,
 } from "@/lib/financeiro-repository";
 
 type ConsultaCapturada = { sql: string; valores: unknown[] };
@@ -197,5 +199,54 @@ describe("repararContaAutomaticaAusente", () => {
     expect(consultas[0].sql).toContain("FOR UPDATE");
     expect(consultas.every((consulta) => !consulta.sql.includes("UPDATE "))).toBe(true);
     expect(consultas.every((consulta) => !consulta.valores.includes(25))).toBe(true);
+  });
+});
+
+describe("reverterContaRecebida", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("limpa somente os dados do recebimento e preserva atendimento, RAT e snapshots", async () => {
+    const consultas: ConsultaCapturada[] = [];
+    const sql = (strings: TemplateStringsArray, ...valores: unknown[]) => {
+      consultas.push({ sql: strings.join("?"), valores });
+      return Promise.resolve([{ id: "8e84b693-e79d-41b5-9e27-ce087109bd18" }]);
+    };
+    vi.mocked(getSql).mockReturnValue(sql as never);
+
+    await reverterContaRecebida("8e84b693-e79d-41b5-9e27-ce087109bd18");
+
+    expect(consultas).toHaveLength(1);
+    expect(consultas[0].sql).toContain("UPDATE contas_receber");
+    expect(consultas[0].sql).toContain("situacao = CASE WHEN revisao_pendente THEN 'EM_REVISAO' ELSE 'A_RECEBER' END");
+    expect(consultas[0].sql).toContain("recebido_em = NULL");
+    expect(consultas[0].sql).toContain("valor_recebido = NULL");
+    expect(consultas[0].sql).toContain("situacao = 'RECEBIDO'");
+    expect(consultas[0].sql).not.toMatch(/(?:UPDATE|INSERT INTO|DELETE FROM)\s+(?:chamados|rats)/);
+    for (const campo of [
+      "encerrado_em", "hora_inicio_snapshot", "hora_fim_snapshot", "duracao_minutos",
+      "valor_base", "valor_adicional", "valor_total", "previsao_recebimento",
+    ]) {
+      expect(consultas[0].sql).not.toContain(`${campo} =`);
+    }
+  });
+
+  it("não aceita reverter uma conta que já não está recebida", async () => {
+    vi.mocked(getSql).mockReturnValue((() => Promise.resolve([])) as never);
+    await expect(reverterContaRecebida("8e84b693-e79d-41b5-9e27-ce087109bd18"))
+      .rejects.toThrow("Conta não encontrada ou não está recebida");
+  });
+
+  it("reutiliza a regra vigente da listagem para previsão atingida ou a receber", async () => {
+    const consultas: ConsultaCapturada[] = [];
+    vi.mocked(getSql).mockReturnValue(((strings: TemplateStringsArray, ...valores: unknown[]) => {
+      consultas.push({ sql: strings.join("?"), valores });
+      return Promise.resolve([]);
+    }) as never);
+
+    await listarContasReceber();
+
+    expect(consultas[0].sql).toContain("WHEN cr.situacao = 'EM_REVISAO' THEN 'Em revisão'");
+    expect(consultas[0].sql).toMatch(/<= \(NOW\(\) AT TIME ZONE 'America\/Sao_Paulo'\)::date THEN 'Previsão atingida'/);
+    expect(consultas[0].sql).toContain("ELSE 'A receber'");
   });
 });

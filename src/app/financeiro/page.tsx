@@ -2,6 +2,7 @@ import { CircleDollarSign } from "lucide-react";
 
 import { FinanceiroLista } from "@/components/financeiro-lista";
 import { observeRequest } from "@/lib/db-observability";
+import { calcularTotaisFinanceiros } from "@/lib/financeiro-resumo";
 import { financeiroService } from "@/lib/server-financeiro";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function FinanceiroPage() {
   return observeRequest("/financeiro", async () => {
     const contas = await financeiroService.listar();
-    const total = contas.filter((conta) => conta.situacao !== "RECEBIDO").reduce((soma, conta) => soma + Number(conta.valor_total || 0), 0);
+    const total = calcularTotaisFinanceiros(contas).em_aberto;
     const partesTotal = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).formatToParts(total);
     const moedaTotal = partesTotal.find((parte) => parte.type === "currency")?.value ?? "R$";
     const valorTotal = partesTotal.filter((parte) => parte.type !== "currency" && parte.type !== "literal").map((parte) => parte.value).join("");

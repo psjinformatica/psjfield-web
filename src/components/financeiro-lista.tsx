@@ -35,10 +35,50 @@ export function indicadoresContaFinanceiro(conta: ContaReceber) {
   ];
 }
 
+export function podeReverterRecebimento(conta: Pick<ContaReceber, "situacao">) {
+  return conta.situacao === "RECEBIDO";
+}
+
+type RespostaReversao = Pick<Response, "ok" | "json">;
+type SolicitarReversao = (url: string, opcoes: RequestInit) => Promise<RespostaReversao>;
+
+export async function solicitarReversaoRecebimento(
+  id: string,
+  confirmado: boolean,
+  solicitar: SolicitarReversao = fetch,
+) {
+  if (!confirmado) return false;
+  const resposta = await solicitar(`/api/financeiro/${id}/reverter`, { method: "POST" });
+  const dados = await resposta.json();
+  if (!resposta.ok) throw new Error(dados.erro || "Não foi possível reverter o recebimento.");
+  return true;
+}
+
+export function ConfirmacaoReversaoRecebimento({
+  desabilitada,
+  onCancelar,
+  onConfirmar,
+}: {
+  desabilitada: boolean;
+  onCancelar: () => void;
+  onConfirmar: () => void;
+}) {
+  return <section aria-labelledby="titulo-reversao-recebimento" className="receive-reversal-confirm" role="alertdialog">
+    <strong id="titulo-reversao-recebimento">Reverter recebimento?</strong>
+    <p>Este chamado voltará para contas a receber e os dados do recebimento registrado serão removidos.</p>
+    <p>O atendimento original não será alterado.</p>
+    <div>
+      <button className="secondary-button" disabled={desabilitada} onClick={onCancelar} type="button">Cancelar</button>
+      <button className="danger-button" disabled={desabilitada} onClick={onConfirmar} type="button">Reverter recebimento</button>
+    </div>
+  </section>;
+}
+
 export function FinanceiroLista({ contas }: { contas: ContaReceber[] }) {
   const router = useRouter();
   const [filtro, setFiltro] = useState("TODOS");
   const [pendente, setPendente] = useState<string>();
+  const [confirmandoReversao, setConfirmandoReversao] = useState<string>();
   const [erro, setErro] = useState("");
   const filtradas = useMemo(
     () => filtrarContasFinanceiro(contas, filtro),
@@ -62,6 +102,20 @@ export function FinanceiroLista({ contas }: { contas: ContaReceber[] }) {
       router.refresh();
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Não foi possível registrar o recebimento.");
+    } finally {
+      setPendente(undefined);
+    }
+  }
+
+  async function reverter(conta: ContaReceber) {
+    setPendente(conta.id);
+    setErro("");
+    try {
+      await solicitarReversaoRecebimento(conta.id, true);
+      setConfirmandoReversao(undefined);
+      router.refresh();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Não foi possível reverter o recebimento.");
     } finally {
       setPendente(undefined);
     }
@@ -94,6 +148,17 @@ export function FinanceiroLista({ contas }: { contas: ContaReceber[] }) {
           <label>Valor recebido<span className="currency-input"><span>R$</span><input defaultValue={conta.valor_total} min="0.01" name="valor_recebido" step="0.01" type="number" required /></span></label>
           <button className="primary-button" disabled={pendente === conta.id}>Marcar como recebido</button>
         </form>}
+        {podeReverterRecebimento(conta) && confirmandoReversao !== conta.id && <button
+          className="secondary-button receive-reversal-button"
+          disabled={pendente === conta.id}
+          onClick={() => setConfirmandoReversao(conta.id)}
+          type="button"
+        >Reverter recebimento</button>}
+        {podeReverterRecebimento(conta) && confirmandoReversao === conta.id && <ConfirmacaoReversaoRecebimento
+          desabilitada={pendente === conta.id}
+          onCancelar={() => setConfirmandoReversao(undefined)}
+          onConfirmar={() => void reverter(conta)}
+        />}
       </article>;
       })}
     </div>
