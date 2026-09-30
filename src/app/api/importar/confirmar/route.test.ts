@@ -69,4 +69,15 @@ describe("POST /api/importar/confirmar", () => {
     await expect(resposta.json()).resolves.toMatchObject({ erro: expect.stringContaining("Número do chamado inválido") });
     expect(dependencias.importar).not.toHaveBeenCalled();
   });
+
+  it("aceita INC revisado e preserva a proveniência usada na deduplicação", async () => {
+    const resposta = await POST(requisicao({ numero_chamado: "INC-924376" }));
+
+    expect(resposta.status).toBe(200);
+    expect(dependencias.importar).toHaveBeenCalledWith(expect.objectContaining({
+      numero_chamado: "INC-924376",
+      hash_email: "a".repeat(64),
+      corpo_email: "corpo original",
+    }), "fixture.eml");
+  });
 });

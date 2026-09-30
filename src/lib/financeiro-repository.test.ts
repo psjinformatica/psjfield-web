@@ -98,6 +98,19 @@ describe("registrarContaAutomatica", () => {
     ]);
   });
 
+  it("preserva INC no snapshot financeiro sem depender de prefixo MI ou SR", async () => {
+    const captura = transacaoCapturada();
+    await registrarContaAutomatica(captura.transacao, {
+      id: 26,
+      numero_chamado: "INC-924376",
+      cliente: "DASA",
+      hora_inicio: "09:00",
+      hora_termino: "09:30",
+    }, "2026-10-01T12:30:00.000Z");
+
+    expect(captura.consultas[0].valores[1]).toBe("INC-924376");
+  });
+
   it("não cria recebível para cliente sem política financeira", async () => {
     const captura = transacaoCapturada();
     await expect(registrarContaAutomatica(captura.transacao, {

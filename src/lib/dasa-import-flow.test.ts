@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   CAMPOS_PREVIEW_IMPORTACAO,
   aplicarRevisaoImportacao,
+  validarRevisaoImportacao,
 } from "@/lib/importacao-campos";
 import { interpretarEml } from "@/lib/parser";
 import { mapChamadoParaRatDasa } from "@/lib/rat-dasa-mapper";
@@ -34,6 +35,38 @@ function comoChamado(importado: Awaited<ReturnType<typeof interpretarEml>>["cham
 }
 
 describe("fluxo DASA de unidade e equipamento", () => {
+  it("transporta a variação INC da prévia revisável até a RAT DASA", async () => {
+    const previa = await interpretarEml(emlDasa([
+      "Data 01/10",
+      "Horário 09:00h",
+      "Valor R$ 100,00",
+      "CLIENTE: DASA Chamado para atendimento",
+      "CHAMADO INTERNO:#INC-924376",
+      "LOCALIDADE: UNIDADE EXEMPLO | Unidade | D265 | CENTRO",
+      "ENDEREÇO: RUA EXEMPLO 369 - Cidade: CURITIBA/PR - Cep: 80240-220",
+      "DEFEITO OU SOLICITAÇÃO: Ponto de rede informado pelo solicitante",
+      "NOME DO SOLICITANTE: Solicitante Exemplo",
+      "telefone: (41) 3333-0000",
+      "Telefone do Suporte: (71) 9000-0000",
+    ].join("\r\n")), "dasa-inc.eml");
+    const revisado = validarRevisaoImportacao(previa.chamado, { cidade: "Curitiba" });
+    const rat = mapChamadoParaRatDasa(comoChamado(revisado));
+
+    expect(revisado).toMatchObject({
+      numero_chamado: "INC-924376",
+      unidade_nome: "UNIDADE EXEMPLO | Unidade | D265 | CENTRO",
+      endereco: "RUA EXEMPLO 369 - CEP: 80240-220",
+      cidade: "Curitiba",
+      estado: "PR",
+      telefone: "(41) 3333-0000",
+      valor_base: "100",
+    });
+    expect(rat.equipamento.chamado_moebius).toBe("INC-924376");
+    expect(rat.local.unidade_nome).toBe("UNIDADE EXEMPLO | Unidade | D265 | CENTRO");
+    expect(rat.atendimento.tipo).toBe("");
+    expect(rat.equipamento.tipo).toBe("");
+  });
+
   it("transporta unidade revisada do e-mail até o mapper sem confundi-la com equipamento", async () => {
     const previa = await interpretarEml(emlDasa([
       "CLIENTE: DASA",

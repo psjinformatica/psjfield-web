@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import PostalMime from "postal-mime";
 
+import { extrairNumeroChamado } from "@/lib/chamado-numero";
 import type { ChamadoImportacao, PreviaImportacao } from "@/lib/types";
 
 const rotulos: Record<string, string[]> = {
@@ -15,7 +16,7 @@ const rotulos: Record<string, string[]> = {
   atividade: ["ATIVIDADE", "SERVICO", "ATIVIDADE A SER REALIZADA", "DEFEITO OU SOLICITACAO"],
   descricao: ["DESCRICAO", "DESCRICAO DO SERVICO"],
   equipamento: ["EQUIPAMENTO"],
-  unidade_nome: ["NOME DA UNIDADE"],
+  unidade_nome: ["NOME DA UNIDADE", "LOCALIDADE"],
   fabricante: ["FABRICANTE", "MARCA"],
   modelo: ["MODELO"],
   patrimonio_ae: ["PATRIMONIO", "ATIVO", "AE"],
@@ -34,19 +35,47 @@ export function semAcentos(valor: string) {
   return (valor || "").normalize("NFD").replace(/\p{Diacritic}/gu, "");
 }
 
-export function normalizarData(valor: string) {
+function dataValida(ano: number, mes: number, dia: number): boolean {
+  const data = new Date(Date.UTC(ano, mes - 1, dia));
+  return data.getUTCFullYear() === ano && data.getUTCMonth() === mes - 1 && data.getUTCDate() === dia;
+}
+
+function dataCivilSaoPaulo(valor: string | Date): { ano: number; mes: number; dia: number } | null {
+  const instante = valor instanceof Date ? valor : new Date(valor);
+  if (Number.isNaN(instante.getTime())) return null;
+  const partes = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(instante);
+  const parte = (tipo: Intl.DateTimeFormatPartTypes) => Number(partes.find((item) => item.type === tipo)?.value);
+  return { ano: parte("year"), mes: parte("month"), dia: parte("day") };
+}
+
+export function normalizarData(valor: string, referencia?: string | Date) {
   const iso = valor.match(/\b(\d{4})-(\d{2})-(\d{2})\b/);
   if (iso) return iso[0];
   const br = valor.match(/\b(\d{1,2})\/(\d{1,2})\/(\d{2,4})\b/);
-  if (!br) return "";
-  const ano = br[3].length === 2 ? `20${br[3]}` : br[3];
-  const data = new Date(Date.UTC(Number(ano), Number(br[2]) - 1, Number(br[1])));
-  if (
-    data.getUTCFullYear() !== Number(ano) ||
-    data.getUTCMonth() !== Number(br[2]) - 1 ||
-    data.getUTCDate() !== Number(br[1])
-  ) return "";
-  return `${ano}-${br[2].padStart(2, "0")}-${br[1].padStart(2, "0")}`;
+  if (br) {
+    const ano = Number(br[3].length === 2 ? `20${br[3]}` : br[3]);
+    const mes = Number(br[2]);
+    const dia = Number(br[1]);
+    if (!dataValida(ano, mes, dia)) return "";
+    return `${ano}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+  }
+
+  const semAno = valor.match(/\b(\d{1,2})\/(\d{1,2})(?!\/)\b/);
+  const dataReferencia = referencia ? dataCivilSaoPaulo(referencia) : null;
+  if (!semAno || !dataReferencia) return "";
+  const dia = Number(semAno[1]);
+  const mes = Number(semAno[2]);
+  if (!dataValida(dataReferencia.ano, mes, dia)) return "";
+
+  const candidata = mes * 100 + dia;
+  const referenciaCivil = dataReferencia.mes * 100 + dataReferencia.dia;
+  if (candidata < referenciaCivil) return "";
+  return `${dataReferencia.ano}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
 }
 
 export function normalizarHora(valor: string) {
@@ -86,14 +115,21 @@ export function extrairCampos(texto: string) {
     .map((nome) => nome.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
     .join("|");
   const padrao = new RegExp(`^\\s*(${nomes})\\s*[:;\\-]+\\s*(.*)$`, "i");
+  const padroesSemSeparador: Array<[string, RegExp]> = [
+    ["DATA", /^DATA\s+\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\s*$/i],
+    ["HORARIO", /^HORARIO\s+(?:[01]?\d|2[0-3])\s*(?::\s*\d{2}H?|H\s*\d{2})\s*$/i],
+    ["VALOR", /^VALOR\s+R\$\s*[\d.,]+\s*$/i],
+  ];
   const encontrados: Record<string, string> = {};
   for (const original of texto.replace(/\r\n?/g, "\n").split("\n")) {
     const linha = original.replace(/[\t\u00a0\u2000-\u200b ]+/g, " ").trim();
-    const correspondencia = semAcentos(linha).match(padrao);
-    if (!correspondencia) continue;
-    const campo = aliases.get(correspondencia[1].toUpperCase());
-    const inicioValor = linha.search(/[:;\-]+/);
-    const valor = inicioValor >= 0 ? linha.slice(inicioValor).replace(/^[:;\-]+\s*/, "").trim() : "";
+    const normalizada = semAcentos(linha);
+    const correspondencia = normalizada.match(padrao);
+    const rotulo = correspondencia?.[1]
+      || padroesSemSeparador.find(([, semSeparador]) => semSeparador.test(normalizada))?.[0];
+    if (!rotulo) continue;
+    const campo = aliases.get(rotulo.toUpperCase());
+    const valor = linha.slice(rotulo.length).replace(/^\s*[:;\-]+\s*|^\s+/, "").trim();
     if (campo && valor && !encontrados[campo]) encontrados[campo] = valor;
   }
   return encontrados;
@@ -110,6 +146,21 @@ function extrairCidadeEstado(endereco: string): [string, string] {
     if (ultimo) return [ultimo[1].trim().replace(/^-|-$/g, ""), ultimo[2].toUpperCase()];
   }
   return ["", ""];
+}
+
+function decomporEndereco(valor: string): { endereco: string; cidade: string; estado: string } {
+  const composto = valor.match(
+    /^(.*?)\s*-\s*CIDADE\s*:\s*(.+?)\s*\/\s*([A-Z]{2})\s*-\s*CEP\s*:\s*(\d{5}-?\d{3})\s*$/i,
+  );
+  if (composto) {
+    return {
+      endereco: `${composto[1].trim()} - CEP: ${composto[4]}`,
+      cidade: composto[2].trim(),
+      estado: composto[3].toUpperCase(),
+    };
+  }
+  const [cidade, estado] = extrairCidadeEstado(valor);
+  return { endereco: valor, cidade, estado };
 }
 
 function extrairEquipamento(valor: string, dados: Record<string, string>) {
@@ -190,13 +241,12 @@ export async function interpretarEml(
   if (!reconhecido) return { chamado: base, reconhecidoGrupoEasy: false, nomeArquivo };
 
   const dados = extrairCampos(corpo);
-  const data = normalizarData(dados.data_agendada || "");
+  const data = normalizarData(dados.data_agendada || "", email.date || undefined);
   const hora = normalizarHora(dados.hora_agendada || dados.data_agendada || "");
-  const endereco = dados.endereco || "";
-  const [cidade, estado] = extrairCidadeEstado(endereco);
+  const local = decomporEndereco(dados.endereco || "");
   const equipamento = extrairEquipamento(dados.equipamento || "", dados);
   const origemNumero = dados.numero_chamado || assunto;
-  const numero = origemNumero.match(/\b(?:MI|SR)-\d+(?:-\d+)?\b/i)?.[0].toUpperCase() || "";
+  const numero = extrairNumeroChamado(origemNumero);
   const clienteBruto = dados.cliente?.trim() || "";
   const cliente = intermediadoras.has(semAcentos(clienteBruto).toUpperCase()) ? "" : clienteBruto;
 
@@ -215,9 +265,9 @@ export async function interpretarEml(
       contato: dados.contato || "",
       telefone: dados.telefone || "",
       unidade_nome: dados.unidade_nome?.trim() || "",
-      endereco,
-      cidade,
-      estado,
+      endereco: local.endereco,
+      cidade: local.cidade,
+      estado: local.estado,
       atividade: dados.atividade || "",
       descricao: dados.descricao || "",
       ...equipamento,

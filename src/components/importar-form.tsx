@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, type ChangeEvent } from "react";
 
 import { formatarCidade, formatarDataHora } from "@/lib/format";
+import { MENSAGEM_NUMERO_CHAMADO_INVALIDO, PADRAO_NUMERO_CHAMADO_HTML } from "@/lib/chamado-numero";
 import { CAMPOS_PREVIEW_IMPORTACAO } from "@/lib/importacao-campos";
 import type { ChamadoDuplicado, PreviaImportacao } from "@/lib/types";
 import type { ChamadoImportacao } from "@/lib/types";
@@ -37,8 +38,8 @@ export function CampoRevisaoImportacao({
       : <input
           type={campo === "data_agendada" ? "date" : campo === "hora_agendada" ? "time" : "text"}
           list={campo === "cliente" ? "clientes-importacao" : undefined}
-          pattern={campo === "numero_chamado" ? "(?:MI|SR)-[0-9]+(?:-[0-9]+)?" : undefined}
-          title={campo === "numero_chamado" ? "Use MI-123, MI-123-2 ou SR-123" : undefined}
+          pattern={campo === "numero_chamado" ? PADRAO_NUMERO_CHAMADO_HTML : undefined}
+          title={campo === "numero_chamado" ? MENSAGEM_NUMERO_CHAMADO_INVALIDO : undefined}
           maxLength={campo === "estado" ? 2 : undefined}
           {...propriedades}
         />}

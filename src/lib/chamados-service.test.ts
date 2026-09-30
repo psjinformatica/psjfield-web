@@ -461,6 +461,24 @@ describe("ChamadosService", () => {
     expect((await service.listarVisitas(visita2.id)).map(({ visita_numero }) => visita_numero)).toEqual([1, 2, 3]);
   });
 
+  it("preserva o número INC em novas visitas e mantém deduplicação pelo hash original", async () => {
+    const gateway = new GatewayMemoria();
+    const service = new ChamadosService(gateway);
+    const raiz = await service.importar({
+      ...importacao("hash-inc"), numero_chamado: "INC-924376", cliente: "DASA", unidade_nome: "Unidade INC",
+    }, "dasa-inc.eml");
+    gateway.registros.set(raiz, { ...(await service.buscar(raiz))!, status: "Improdutivo" });
+
+    const visita2 = await service.criarVisita(raiz, {
+      data_agendada: "2026-10-02", hora_agendada: "09:00", unidade_nome: "Unidade INC",
+    });
+
+    expect(await service.buscar(visita2.id)).toMatchObject({
+      numero_chamado: "INC-924376", chamado_raiz_id: raiz, visita_numero: 2,
+    });
+    expect(await service.buscarHash("hash-inc")).toMatchObject({ chamado_id: raiz });
+  });
+
   it("inicia, finaliza e reabre somente a visita informada", async () => {
     const gateway = new GatewayMemoria();
     const service = new ChamadosService(gateway);

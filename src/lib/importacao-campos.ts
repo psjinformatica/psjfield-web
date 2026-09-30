@@ -1,4 +1,5 @@
 import type { ChamadoImportacao } from "@/lib/types";
+import { MENSAGEM_NUMERO_CHAMADO_INVALIDO, numeroChamadoValido } from "@/lib/chamado-numero";
 
 export const CAMPOS_IMPORTACAO_EDITAVEIS = [
   "numero_chamado", "cliente", "projeto", "data_agendada", "hora_agendada",
@@ -54,8 +55,8 @@ export function validarRevisaoImportacao(
 ): ChamadoImportacao {
   const revisado = aplicarRevisaoImportacao(original, dados);
   const numero = revisado.numero_chamado.trim();
-  if (numero && !/^(?:MI|SR)-\d+(?:-\d+)?$/i.test(numero)) {
-    throw new Error("Número do chamado inválido. Use o formato MI-123, MI-123-2 ou SR-123.");
+  if (numero && !numeroChamadoValido(numero)) {
+    throw new Error(MENSAGEM_NUMERO_CHAMADO_INVALIDO);
   }
   if (revisado.estado && !/^[A-Za-z]{2}$/.test(revisado.estado.trim())) {
     throw new Error("UF inválida. Informe duas letras.");

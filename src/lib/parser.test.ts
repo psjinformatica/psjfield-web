@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { extrairCampos, interpretarEml } from "@/lib/parser";
+import { extrairCampos, interpretarEml, normalizarData, normalizarHora } from "@/lib/parser";
 
 function eml(corpo: string, assunto = "Acionamento MI-285611-2") {
   return new TextEncoder().encode(
@@ -67,6 +67,62 @@ describe("interpretarEml", () => {
       patrimonio_ae: "",
       numero_serie: "",
     });
+  });
+
+  it("interpreta a nova variação DASA INC sem inferir dados não estruturados", async () => {
+    const corpo = [
+      "Data 01/10",
+      "Horário 09:00h",
+      "Valor R$ 100,00",
+      "",
+      "CLIENTE: DASA Chamado para atendimento",
+      "CHAMADO INTERNO:#INC-924376",
+      "SLA:1h 8m",
+      "Defeito ou solicitação: Precisamos de Field para fixar o ponto de rede informado no acionamento",
+      "Localidade: UNIDADE EXEMPLO | Unidade | D265 | CENTRO",
+      "Horário de funcionamento: Seg. a sex. das 06h30 às 17h",
+      "Endereço: RUA EXEMPLO 369 - Cidade: CURITIBA/PR - Cep: 80240-220",
+      "Nome do solicitante: Solicitante Exemplo",
+      "telefone: (41) 3333-0000",
+      "E-mail: solicitante@example.invalid",
+      "Telefone do Suporte: Suporte (71) 9000-0000 123456",
+    ].join("\r\n");
+    const previa = await interpretarEml(eml(corpo, "Novo atendimento DASA"), "dasa-inc.eml");
+
+    expect(previa.chamado).toMatchObject({
+      numero_chamado: "INC-924376",
+      cliente: "DASA Chamado para atendimento",
+      data_agendada: "2026-10-01",
+      hora_agendada: "09:00",
+      valor_base: "100",
+      unidade_nome: "UNIDADE EXEMPLO | Unidade | D265 | CENTRO",
+      endereco: "RUA EXEMPLO 369 - CEP: 80240-220",
+      cidade: "CURITIBA",
+      estado: "PR",
+      contato: "Solicitante Exemplo",
+      telefone: "(41) 3333-0000",
+      atividade: "Precisamos de Field para fixar o ponto de rede informado no acionamento",
+      equipamento: "",
+    });
+    expect(previa.chamado.corpo_email).toContain("solicitante@example.invalid");
+    expect(previa.chamado.telefone).not.toContain("Suporte");
+  });
+
+  it("só completa ano ausente quando a data do e-mail torna o mesmo ano inequívoco", () => {
+    expect(normalizarData("01/10", "2026-09-30T13:00:00.000Z")).toBe("2026-10-01");
+    expect(normalizarData("01/10")).toBe("");
+    expect(normalizarData("01/01", "2026-12-31T13:00:00.000Z")).toBe("");
+  });
+
+  it.each(["09:00", "09:00h", "09h00"])("normaliza horário seguro %s", (valor) => {
+    expect(normalizarHora(valor)).toBe("09:00");
+  });
+
+  it("não confunde horário de funcionamento com o horário agendado sem separador", () => {
+    expect(extrairCampos([
+      "Horário de funcionamento: Seg. a sex. das 06h30 às 17h",
+      "Horário 09:00h",
+    ].join("\n")).hora_agendada).toBe("09:00h");
   });
 
   it("preserva somente metadados e corpo em e-mail genérico", async () => {

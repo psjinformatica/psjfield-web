@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { MENSAGEM_NUMERO_CHAMADO_INVALIDO, numeroChamadoValido } from "@/lib/chamado-numero";
 import type { Chamado } from "@/lib/types";
 
 export const CAMPOS_EDICAO_CHAMADO = [
@@ -60,8 +61,8 @@ const numeroFinanceiro = z.union([z.null(), z.string().trim()]).transform((valor
 
 export const dadosEdicaoChamadoSchema = z.object({
   numero_chamado: texto(100).refine(
-    (valor) => valor === "" || /^(?:MI|SR)-\d+(?:-\d+)?$/i.test(valor),
-    "Número do chamado inválido. Use MI-123, MI-123-2 ou SR-123.",
+    (valor) => valor === "" || numeroChamadoValido(valor),
+    MENSAGEM_NUMERO_CHAMADO_INVALIDO,
   ),
   cliente: texto(500),
   projeto: texto(500),

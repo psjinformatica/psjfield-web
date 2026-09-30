@@ -45,6 +45,16 @@ describe("edição cadastral do chamado", () => {
     });
   });
 
+  it("aceita INC na edição pós-criação sem aceitar sufixo não comprovado", () => {
+    const valido = entrada();
+    valido.dados.numero_chamado = "INC-924376";
+    expect(validarSolicitacaoEdicaoChamado(valido).dados.numero_chamado).toBe("INC-924376");
+
+    const invalido = entrada();
+    invalido.dados.numero_chamado = "INC-924376-2";
+    expect(() => validarSolicitacaoEdicaoChamado(invalido)).toThrow("Número do chamado inválido");
+  });
+
   it.each([
     [{ status: "Concluído" }, "campo interno"],
     [{ hash_email: "alterado" }, "hash do e-mail"],

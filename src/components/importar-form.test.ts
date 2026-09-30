@@ -61,10 +61,11 @@ describe("CampoRevisaoImportacao", () => {
       campo: "cliente", rotulo: "Cliente", valor: "DASA", onChange: vi.fn(),
     }));
     const numero = renderToStaticMarkup(CampoRevisaoImportacao({
-      campo: "numero_chamado", rotulo: "Número do chamado", valor: "SR-1", onChange: vi.fn(),
+      campo: "numero_chamado", rotulo: "Número do chamado", valor: "INC-924376", onChange: vi.fn(),
     }));
 
     expect(cliente).toContain('list="clientes-importacao"');
     expect(numero).toContain("pattern=");
+    expect(numero).toContain("INC-");
   });
 });

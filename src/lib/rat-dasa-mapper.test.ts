@@ -53,6 +53,19 @@ describe("mapChamadoParaRatDasa", () => {
     expect(dados.local.unidade_nome).not.toBe("Etiquetadora");
   });
 
+  it("preserva INC como Nº Chamado sem inferir atendimento ou equipamento do defeito", () => {
+    const dados = mapChamadoParaRatDasa({
+      ...chamadoDasaSeguro,
+      numero_chamado: "INC-924376",
+      atividade: "Precisamos de Field para fixar o ponto de rede informado",
+      equipamento: "",
+    });
+
+    expect(dados.equipamento.chamado_moebius).toBe("INC-924376");
+    expect(dados.atendimento.tipo).toBe("");
+    expect(dados.equipamento.tipo).toBe("");
+  });
+
   it("não converte texto ambíguo de equipamento em unidade nem em tipo DASA", () => {
     const dados = mapChamadoParaRatDasa({
       ...chamadoDasaSeguro,

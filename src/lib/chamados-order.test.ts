@@ -33,6 +33,11 @@ function ids(chamados: ChamadoOrdenavel[]) {
 }
 
 describe("ordenação dos chamados", () => {
+  it("encontra INC pelo número externo sem depender de prefixos MI ou SR", () => {
+    const inc = chamado(924376, "Agendado", { numero_chamado: "INC-924376" });
+    expect(filtrarChamados([inc], "inc-924376", "Todos")).toEqual([inc]);
+  });
+
   it("coloca agendados primeiro em ordem crescente de data e hora", () => {
     const resultado = ordenarChamados([
       chamado(21, "Agendado", { data_agendada: "2026-09-21", hora_agendada: "10:00" }),

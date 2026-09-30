@@ -66,7 +66,7 @@ describe("revisão editável da importação", () => {
     });
   });
 
-  it.each(["MI-123", "MI-123-2", "SR-900001", ""])("aceita número válido %s", (numero) => {
+  it.each(["MI-123", "MI-123-2", "SR-900001", "INC-924376", ""])("aceita número válido %s", (numero) => {
     expect(() => validarRevisaoImportacao(importacao(), { numero_chamado: numero })).not.toThrow();
   });
 
@@ -75,6 +75,8 @@ describe("revisão editável da importação", () => {
       .toThrow("Número do chamado inválido");
     expect(() => validarRevisaoImportacao(importacao(), { estado: "Paraná" }))
       .toThrow("UF inválida");
+    expect(() => validarRevisaoImportacao(importacao(), { numero_chamado: "INC-924376-2" }))
+      .toThrow("Número do chamado inválido");
   });
 
   it.each([
