@@ -50,6 +50,16 @@ describe("ordenação dos chamados", () => {
     expect(ids(resultado)).toEqual([24, 20, 23, 22, 21]);
   });
 
+  it("reflete a data corrigida na posição cronológica sem alterar a regra da listagem", () => {
+    const resultado = ordenarChamados([
+      chamado(32, "Agendado", { numero_chamado: "SR-1017094", data_agendada: "2026-11-05", hora_agendada: "13:00" }),
+      chamado(33, "Agendado", { data_agendada: "2026-11-04", hora_agendada: "14:00" }),
+      chamado(34, "Agendado", { data_agendada: "2026-11-05", hora_agendada: "12:00" }),
+    ]);
+
+    expect(ids(resultado)).toEqual([33, 34, 32]);
+  });
+
   it("mistura concluídos e improdutivos pelo encerramento mais recente", () => {
     const resultado = ordenarChamados([
       chamado(4, "Concluído", { encerrado_operacional_em: "2026-07-30T22:10:00.000Z" }),

@@ -4,7 +4,8 @@ import { MENSAGEM_NUMERO_CHAMADO_INVALIDO, numeroChamadoValido } from "@/lib/cha
 import type { Chamado } from "@/lib/types";
 
 export const CAMPOS_EDICAO_CHAMADO = [
-  "numero_chamado", "cliente", "projeto", "usuario_responsavel", "contato", "telefone",
+  "numero_chamado", "cliente", "projeto", "data_agendada", "hora_agendada",
+  "usuario_responsavel", "contato", "telefone",
   "unidade_nome", "endereco", "cidade", "estado", "atividade", "descricao", "observacoes",
   "equipamento", "fabricante", "modelo", "numero_serie", "patrimonio_ae",
   "valor_base", "horas_incluidas", "valor_hora_adicional",
@@ -28,6 +29,8 @@ export const ROTULOS_CAMPOS_EDICAO_CHAMADO: Record<CampoEdicaoChamado, string> =
   numero_chamado: "Número do chamado",
   cliente: "Cliente",
   projeto: "Projeto",
+  data_agendada: "Data agendada",
+  hora_agendada: "Horário agendado",
   usuario_responsavel: "Usuário responsável/Login",
   contato: "Solicitante/Contato",
   telefone: "Telefone",
@@ -49,6 +52,20 @@ export const ROTULOS_CAMPOS_EDICAO_CHAMADO: Record<CampoEdicaoChamado, string> =
 };
 
 const texto = (maximo = 2_000) => z.string().trim().max(maximo);
+const dataCivilOpcional = z.string().trim()
+  .refine((valor) => valor === "" || /^\d{4}-\d{2}-\d{2}$/.test(valor), "Informe uma data válida.")
+  .refine((valor) => {
+    if (valor === "") return true;
+    const [ano, mes, dia] = valor.split("-").map(Number);
+    const data = new Date(Date.UTC(ano, mes - 1, dia));
+    return data.getUTCFullYear() === ano
+      && data.getUTCMonth() === mes - 1
+      && data.getUTCDate() === dia;
+  }, "Informe uma data válida.");
+const horarioOpcional = z.string().trim().refine(
+  (valor) => valor === "" || /^([01]\d|2[0-3]):[0-5]\d$/.test(valor),
+  "Informe um horário válido no formato HH:MM.",
+);
 const numeroFinanceiro = z.union([z.null(), z.string().trim()]).transform((valor, contexto) => {
   if (valor === null || valor === "") return null;
   const normalizado = valor.replace(",", ".");
@@ -66,6 +83,8 @@ export const dadosEdicaoChamadoSchema = z.object({
   ),
   cliente: texto(500),
   projeto: texto(500),
+  data_agendada: dataCivilOpcional,
+  hora_agendada: horarioOpcional,
   usuario_responsavel: texto(500),
   contato: texto(500),
   telefone: texto(100),

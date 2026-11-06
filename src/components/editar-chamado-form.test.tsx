@@ -29,6 +29,7 @@ describe("EditarChamadoForm", () => {
       expect(html).toContain("Unidade/Nome");
       expect(html).toContain("Endereço");
       expect(html).toContain("Equipamento");
+      expect(html).toContain("Agendamento");
       expect(html).toContain("Revisar alterações");
     },
   );
@@ -38,6 +39,21 @@ describe("EditarChamadoForm", () => {
     expect(html).toContain("<textarea");
     expect(html).toContain("Atividade/Defeito/Solicitação original");
     expect(html).toContain("Observações");
+  });
+
+  it("carrega data e horário atuais em controles próprios, inclusive data vazia", () => {
+    const preenchido = renderToStaticMarkup(<EditarChamadoForm contexto={contexto({
+      chamado: { ...chamadoDasaSeguro, data_agendada: "2026-11-05", hora_agendada: "13:00" },
+    })} />);
+    expect(preenchido).toMatch(/type="date"[^>]*id="campo-data_agendada"[^>]*value="2026-11-05"/);
+    expect(preenchido).toMatch(/type="time"[^>]*id="campo-hora_agendada"[^>]*value="13:00"/);
+    expect(preenchido).toContain("não são propagados para outras ocorrências");
+
+    const semData = renderToStaticMarkup(<EditarChamadoForm contexto={contexto({
+      chamado: { ...chamadoDasaSeguro, data_agendada: "", hora_agendada: "13:00" },
+    })} />);
+    expect(semData).toMatch(/type="date"[^>]*id="campo-data_agendada"[^>]*value=""/);
+    expect(semData).toMatch(/type="time"[^>]*id="campo-hora_agendada"[^>]*value="13:00"/);
   });
 
   it("deixa parâmetros financeiros somente leitura quando já existe recebível", () => {
@@ -71,6 +87,21 @@ describe("EditarChamadoForm", () => {
       anterior: chamadoDasaSeguro.endereco,
       novo: "Avenida Presidente Kennedy, 4121",
     })]);
+  });
+
+  it("resume somente a data quando o horário existente é preservado", () => {
+    const anterior = dadosEditaveisDoChamado({
+      ...chamadoDasaSeguro,
+      data_agendada: "",
+      hora_agendada: "13:00",
+    });
+    const resumo = resumirAlteracoesEdicao(anterior, { ...anterior, data_agendada: "2026-11-05" });
+    expect(resumo).toEqual([{
+      campo: "data_agendada",
+      rotulo: "Data agendada",
+      anterior: "",
+      novo: "2026-11-05",
+    }]);
   });
 
   it("envia uma única atualização para a API dedicada", async () => {

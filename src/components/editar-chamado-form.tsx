@@ -25,6 +25,7 @@ const CAMPOS_LONGOS = new Set<CampoEdicaoChamado>([
 
 const GRUPOS: Array<{ titulo: string; campos: CampoEdicaoChamado[] }> = [
   { titulo: "Identificação", campos: ["numero_chamado", "cliente", "projeto", "usuario_responsavel"] },
+  { titulo: "Agendamento", campos: ["data_agendada", "hora_agendada"] },
   { titulo: "Local e contato", campos: ["contato", "telefone", "unidade_nome", "endereco", "cidade", "estado"] },
   { titulo: "Solicitação", campos: ["atividade", "descricao", "observacoes"] },
   { titulo: "Equipamento", campos: ["equipamento", "fabricante", "modelo", "numero_serie", "patrimonio_ae"] },
@@ -64,6 +65,7 @@ function CampoEdicao({
   onChange: (valor: string | null) => void;
 }) {
   const financeiro = CAMPOS_FINANCEIROS_CHAMADO.includes(campo as typeof CAMPOS_FINANCEIROS_CHAMADO[number]);
+  const tipo = campo === "data_agendada" ? "date" : campo === "hora_agendada" ? "time" : financeiro ? "number" : "text";
   const propriedades = {
     id: `campo-${campo}`,
     value: valor ?? "",
@@ -77,7 +79,7 @@ function CampoEdicao({
     {CAMPOS_LONGOS.has(campo)
       ? <textarea rows={campo === "atividade" || campo === "descricao" || campo === "observacoes" ? 4 : 2} {...propriedades} />
       : <input
-          type={financeiro ? "number" : "text"}
+          type={tipo}
           min={financeiro ? "0" : undefined}
           step={financeiro ? "0.01" : undefined}
           maxLength={campo === "estado" ? 2 : undefined}
@@ -100,6 +102,7 @@ export function EditarChamadoForm({ contexto }: { contexto: ContextoEdicaoChamad
   const mudouCompartilhavel = resumo.some(({ campo }) => CAMPOS_COMPARTILHAVEIS_VISITAS.includes(
     campo as typeof CAMPOS_COMPARTILHAVEIS_VISITAS[number],
   ));
+  const escopoEfetivo = mudouCompartilhavel ? escopo : "SOMENTE_ESTA_VISITA";
 
   function atualizar(campo: CampoEdicaoChamado, valor: string | null) {
     setDados((atual) => ({ ...atual, [campo]: valor }));
@@ -123,7 +126,7 @@ export function EditarChamadoForm({ contexto }: { contexto: ContextoEdicaoChamad
     try {
       const resposta = await solicitarEdicaoChamado(contexto.chamado.id, {
         dados,
-        escopo,
+        escopo: escopoEfetivo,
         versao_dados: contexto.versao_dados,
         versao_grupo: contexto.versao_grupo,
       });
@@ -142,6 +145,9 @@ export function EditarChamadoForm({ contexto }: { contexto: ContextoEdicaoChamad
     <form className="edit-call-form" onSubmit={revisar}>
       {GRUPOS.map((grupo) => <fieldset key={grupo.titulo}>
         <legend>{grupo.titulo}</legend>
+        {grupo.titulo === "Agendamento"
+          ? <p className="form-note">Data e horário pertencem somente a esta visita e não são propagados para outras ocorrências.</p>
+          : null}
         {grupo.campos[0] === "valor_base" && financeiroSomenteLeitura
           ? <p className="form-note">{contexto.possui_recebivel
             ? "Financeiro já consolidado. Estes parâmetros permanecem somente leitura e o recebível histórico não será recalculado."

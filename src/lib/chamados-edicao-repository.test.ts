@@ -33,10 +33,18 @@ function bancoEdicao(opcoes: {
   const registros = [visita1, visita2];
   const atualizacoesConfirmadas: Array<{ id: number; fragmento: Fragmento }> = [];
   const auditoriasConfirmadas: number[] = [];
+  const detalhesAuditoriaConfirmadas: Array<{
+    id: number;
+    escopo: string;
+    campos: string[];
+    anterior: Record<string, unknown>;
+    novo: Record<string, unknown>;
+  }> = [];
 
   const criarTag = (transacional = false) => {
     const atualizacoesPendentes: Array<{ id: number; fragmento: Fragmento }> = [];
     const auditoriasPendentes: number[] = [];
+    const detalhesAuditoriaPendentes: typeof detalhesAuditoriaConfirmadas = [];
     const tag = ((primeiro: TemplateStringsArray | Record<string, unknown>, ...valores: unknown[]) => {
       if (!Array.isArray(primeiro) || !Object.prototype.hasOwnProperty.call(primeiro, "raw")) {
         return { dados: primeiro, campos: valores } satisfies Fragmento;
@@ -56,6 +64,13 @@ function bancoEdicao(opcoes: {
       if (sql.includes("INSERT INTO chamados_alteracoes")) {
         if (opcoes.falharAuditoria) return Promise.reject(new Error("falha de auditoria"));
         auditoriasPendentes.push(Number(valores[0]));
+        detalhesAuditoriaPendentes.push({
+          id: Number(valores[0]),
+          escopo: String(valores[1]),
+          campos: valores[2] as string[],
+          anterior: valores[3] as Record<string, unknown>,
+          novo: valores[4] as Record<string, unknown>,
+        });
         return Promise.resolve([]);
       }
       return Promise.resolve([]);
@@ -74,14 +89,15 @@ function bancoEdicao(opcoes: {
         const resultado = await operacao(tx);
         atualizacoesConfirmadas.push(...(tx as typeof tx & { _updates: typeof atualizacoesPendentes })._updates);
         auditoriasConfirmadas.push(...(tx as typeof tx & { _audits: typeof auditoriasPendentes })._audits);
+        detalhesAuditoriaConfirmadas.push(...(tx as typeof tx & { _auditDetails: typeof detalhesAuditoriaPendentes })._auditDetails);
         return resultado;
       };
     }
-    Object.assign(tag, { _updates: atualizacoesPendentes, _audits: auditoriasPendentes });
+    Object.assign(tag, { _updates: atualizacoesPendentes, _audits: auditoriasPendentes, _auditDetails: detalhesAuditoriaPendentes });
     return tag;
   };
   vi.mocked(getSql).mockReturnValue(criarTag() as never);
-  return { registros, atualizacoesConfirmadas, auditoriasConfirmadas };
+  return { registros, atualizacoesConfirmadas, auditoriasConfirmadas, detalhesAuditoriaConfirmadas };
 }
 
 describe("persistência da edição cadastral", () => {
@@ -219,6 +235,56 @@ describe("persistência da edição cadastral", () => {
       },
     });
     expect(banco.auditoriasConfirmadas).toEqual([25]);
+  });
+
+  it("altera somente a data da visita alvo, preserva o horário e não propaga o agendamento", async () => {
+    const banco = bancoEdicao();
+    const contexto = await buscarContextoEdicaoChamado(25);
+    const dados = {
+      ...dadosEditaveisDoChamado(contexto!.chamado),
+      data_agendada: "2026-11-05",
+    };
+
+    await expect(editarDadosChamado(25, {
+      dados,
+      escopo: "TODAS_VISITAS_RELACIONADAS",
+      versao_dados: contexto!.versao_dados,
+      versao_grupo: contexto!.versao_grupo,
+    })).resolves.toEqual({ alterados: 1, campos_alterados: ["data_agendada"] });
+
+    expect(banco.atualizacoesConfirmadas).toEqual([{
+      id: 25,
+      fragmento: { dados: { data_agendada: "2026-11-05" }, campos: ["data_agendada"] },
+    }]);
+    expect(banco.registros[0].data_agendada).toBe(chamadoDasaSeguro.data_agendada);
+    expect(banco.auditoriasConfirmadas).toEqual([25]);
+    expect(banco.detalhesAuditoriaConfirmadas).toEqual([{
+      id: 25,
+      escopo: "TODAS_VISITAS_RELACIONADAS",
+      campos: ["data_agendada"],
+      anterior: { data_agendada: chamadoDasaSeguro.data_agendada },
+      novo: { data_agendada: "2026-11-05" },
+    }]);
+  });
+
+  it("altera somente o horário da visita alvo, preservando a data", async () => {
+    const banco = bancoEdicao();
+    const contexto = await buscarContextoEdicaoChamado(25);
+    const dados = {
+      ...dadosEditaveisDoChamado(contexto!.chamado),
+      hora_agendada: "13:00",
+    };
+
+    await expect(editarDadosChamado(25, {
+      dados,
+      escopo: "SOMENTE_ESTA_VISITA",
+      versao_dados: contexto!.versao_dados,
+      versao_grupo: contexto!.versao_grupo,
+    })).resolves.toEqual({ alterados: 1, campos_alterados: ["hora_agendada"] });
+    expect(banco.atualizacoesConfirmadas[0]).toMatchObject({
+      id: 25,
+      fragmento: { dados: { hora_agendada: "13:00" } },
+    });
   });
 
   it.each(["Concluído", "Improdutivo", "Cancelado"])(
