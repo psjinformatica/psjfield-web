@@ -23,4 +23,40 @@ describe("calcularFinanceiro", () => {
     "mantém pendente quando o intervalo %s–%s não é seguro",
     (inicio, fim) => expect(calcularFinanceiro(inicio, fim)).toBeNull(),
   );
+
+  it.each([
+    ["09:00", "11:00", 120, 0, 120],
+    ["09:00", "11:01", 121, 1, 170],
+    ["09:00", "12:00", 180, 1, 170],
+    ["09:00", "12:01", 181, 2, 220],
+    ["09:00", "12:20", 200, 2, 220],
+  ])("calcula São José de %s até %s", (inicio, fim, duracao, adicionais, total) => {
+    expect(calcularFinanceiro(inicio, fim, {
+      valor_base: "120",
+      horas_incluidas: "2",
+      valor_hora_adicional: "50",
+    })).toEqual({
+      duracao_minutos: duracao,
+      horas_adicionais: adicionais,
+      valor_base: 120,
+      valor_hora_adicional: 50,
+      valor_adicional: adicionais * 50,
+      valor_total: total,
+      regra_preco: "PARAMETROS_CHAMADO_V1",
+    });
+  });
+
+  it("preserva parâmetros zero e cobra sem substituir pelos padrões", () => {
+    expect(calcularFinanceiro("09:00", "09:01", {
+      valor_base: 0,
+      horas_incluidas: 0,
+      valor_hora_adicional: 0,
+    })).toMatchObject({
+      horas_adicionais: 1,
+      valor_base: 0,
+      valor_hora_adicional: 0,
+      valor_total: 0,
+      regra_preco: "PARAMETROS_CHAMADO_V1",
+    });
+  });
 });

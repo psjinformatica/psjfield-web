@@ -1,5 +1,13 @@
 export const REGRA_PRECO_ATUAL = "BASE_100_3H_ADICIONAL_30_V1";
-export const VALOR_BASE_ATUAL = 100;
+export const REGRA_PRECO_PERSONALIZADA = "PARAMETROS_CHAMADO_V1";
+export const PARAMETROS_FINANCEIROS_PADRAO = {
+  valor_base: 100,
+  horas_incluidas: 3,
+  valor_hora_adicional: 30,
+} as const;
+export const VALOR_BASE_ATUAL = PARAMETROS_FINANCEIROS_PADRAO.valor_base;
+
+export type RegraPreco = typeof REGRA_PRECO_ATUAL | typeof REGRA_PRECO_PERSONALIZADA;
 
 export type SituacaoFinanceira = "A_RECEBER" | "EM_REVISAO" | "RECEBIDO";
 export type OrigemFinanceira = "AUTOMATICO" | "HISTORICO_MANUAL";
@@ -11,7 +19,7 @@ export type CalculoFinanceiro = {
   valor_hora_adicional: number;
   valor_adicional: number;
   valor_total: number;
-  regra_preco: typeof REGRA_PRECO_ATUAL;
+  regra_preco: RegraPreco;
 };
 
 export type ContaReceber = {

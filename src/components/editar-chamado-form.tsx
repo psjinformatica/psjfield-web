@@ -17,6 +17,7 @@ import {
   type EscopoEdicaoChamado,
 } from "@/lib/chamados-edicao";
 import { formatarDataHora } from "@/lib/format";
+import { statusEncerraAtendimento } from "@/lib/status";
 
 const CAMPOS_LONGOS = new Set<CampoEdicaoChamado>([
   "unidade_nome", "endereco", "atividade", "descricao", "observacoes", "equipamento",
@@ -94,7 +95,7 @@ export function EditarChamadoForm({ contexto }: { contexto: ContextoEdicaoChamad
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
   const resumo = resumirAlteracoesEdicao(inicial, dados);
-  const atendimentoEncerrado = contexto.chamado.status === "Concluído" || contexto.chamado.status === "Improdutivo";
+  const atendimentoEncerrado = statusEncerraAtendimento(contexto.chamado.status);
   const financeiroSomenteLeitura = contexto.possui_recebivel || atendimentoEncerrado;
   const mudouCompartilhavel = resumo.some(({ campo }) => CAMPOS_COMPARTILHAVEIS_VISITAS.includes(
     campo as typeof CAMPOS_COMPARTILHAVEIS_VISITAS[number],

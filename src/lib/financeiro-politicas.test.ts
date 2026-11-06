@@ -58,6 +58,31 @@ describe("políticas financeiras por cliente", () => {
     });
   });
 
+  it("combina a previsão DASA com os parâmetros personalizados do chamado", () => {
+    expect(prepararRecebivelAutomatico(
+      "DASA",
+      "2026-11-06",
+      "09:00",
+      "12:20",
+      { valor_base: "120", horas_incluidas: "2", valor_hora_adicional: "50" },
+    )).toMatchObject({
+      previsao_recebimento: "2026-12-15",
+      parametros: {
+        valor_base: 120,
+        horas_incluidas: 2,
+        valor_hora_adicional: 50,
+        regra_preco: "PARAMETROS_CHAMADO_V1",
+      },
+      calculo: {
+        duracao_minutos: 200,
+        horas_adicionais: 2,
+        valor_adicional: 100,
+        valor_total: 220,
+        regra_preco: "PARAMETROS_CHAMADO_V1",
+      },
+    });
+  });
+
   it("aplica a política DASA ao alias preservado nas visitas derivadas", () => {
     expect(prepararRecebivelAutomatico(
       "DASA Chamado para atendimento",

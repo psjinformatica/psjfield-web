@@ -14,6 +14,8 @@ import { carregarComplementosChamado } from "@/lib/chamado-detalhe";
 import { observeRequest } from "@/lib/db-observability";
 import { nomeArquivoRat } from "@/lib/rat-arquivo";
 import { resolverModeloRat } from "@/lib/rat-models";
+import { resolverParametrosFinanceiros } from "@/lib/financeiro-parametros";
+import { resolverPoliticaFinanceira } from "@/lib/financeiro-politicas";
 import { ratService } from "@/lib/server-rat";
 import { chamadosService } from "@/lib/server-service";
 import { assinaturasService } from "@/lib/server-signatures";
@@ -24,6 +26,11 @@ export const dynamic = "force-dynamic";
 
 function Dado({ rotulo, valor }: { rotulo: string; valor?: string | null }) {
   return <div className="data-item"><span>{rotulo}</span><strong>{valor || "—"}</strong></div>;
+}
+
+function formatarHorasIncluidas(valor: number) {
+  const horas = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 }).format(valor);
+  return `${horas} ${valor === 1 ? "hora" : "horas"}`;
 }
 
 export default async function DetalheChamado({ params }: { params: Promise<{ id: string }> }) {
@@ -42,6 +49,13 @@ export default async function DetalheChamado({ params }: { params: Promise<{ id:
     const numero = chamado.numero_chamado || `Chamado ${chamado.id}`;
     const encerrado = statusEncerraAtendimento(chamado.status);
     const ratAtual = rats.find((rat) => rat.atual) || rats[0];
+    const parametrosFinanceiros = resolverParametrosFinanceiros(chamado);
+    const possuiCondicaoFinanceira = Boolean(
+      resolverPoliticaFinanceira(chamado.cliente)
+      || chamado.valor_base !== null
+      || chamado.horas_incluidas !== null
+      || chamado.valor_hora_adicional !== null,
+    );
     return (
     <main className={`page-shell detail-page${encerrado ? " detail-page-closed" : ""}`}>
       {chamado.visualizado_em === null ? <MarcarChamadoAcessado id={chamado.id} /> : null}
@@ -52,7 +66,9 @@ export default async function DetalheChamado({ params }: { params: Promise<{ id:
           <h1>{numero}</h1>
           <p>{chamado.cliente || "Cliente não informado"}{exibirIdentificacaoVisita(visitas.length) ? ` • ${rotuloVisita(chamado.visita_numero)}` : ""}{chamado.projeto ? ` · ${chamado.projeto}` : ""}</p>
         </div>
-        {chamado.valor_base && <strong className="detail-price">{formatarMoeda(chamado.valor_base)}</strong>}
+        {possuiCondicaoFinanceira
+          ? <strong className="detail-price">{formatarMoeda(String(parametrosFinanceiros.valor_base))}</strong>
+          : null}
       </header>
 
       <div className="detail-record-actions">
@@ -74,6 +90,12 @@ export default async function DetalheChamado({ params }: { params: Promise<{ id:
           <Dado rotulo="Projeto" valor={chamado.projeto} />
           <Dado rotulo="Atividade" valor={chamado.atividade} />
           <Dado rotulo="Observações" valor={chamado.observacoes} />
+          {possuiCondicaoFinanceira ? <>
+            <Dado rotulo="Valor-base" valor={formatarMoeda(String(parametrosFinanceiros.valor_base))} />
+            <Dado rotulo="Horas incluídas" valor={formatarHorasIncluidas(parametrosFinanceiros.horas_incluidas)} />
+            <Dado rotulo="Hora adicional" valor={formatarMoeda(String(parametrosFinanceiros.valor_hora_adicional))} />
+            <Dado rotulo="Condição financeira" valor={parametrosFinanceiros.personalizado ? "Personalizada" : "Política padrão"} />
+          </> : null}
         </div>
       </section>
 

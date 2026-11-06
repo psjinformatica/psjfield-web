@@ -211,9 +211,13 @@ export async function finalizarChamado(
       status: string;
       hora_inicio: string;
       hora_termino: string;
+      valor_base: string | null;
+      horas_incluidas: string | null;
+      valor_hora_adicional: string | null;
       observacoes_atendimento: string;
     }[]>`
-      SELECT id, numero_chamado, cliente, status, hora_inicio, hora_termino, observacoes_atendimento
+      SELECT id, numero_chamado, cliente, status, hora_inicio, hora_termino,
+             valor_base, horas_incluidas, valor_hora_adicional, observacoes_atendimento
       FROM chamados WHERE id = ${id} FOR UPDATE
     `;
     const atual = atuais[0];
@@ -245,6 +249,9 @@ export async function finalizarChamado(
         cliente: atual.cliente,
         hora_inicio: atual.hora_inicio,
         hora_termino: linhas[0].hora_termino,
+        valor_base: atual.valor_base,
+        horas_incluidas: atual.horas_incluidas,
+        valor_hora_adicional: atual.valor_hora_adicional,
       }, encerradoEm);
     } else {
       await colocarContaEmRevisao(transacao, id);

@@ -80,4 +80,19 @@ describe("POST /api/importar/confirmar", () => {
       corpo_email: "corpo original",
     }), "fixture.eml");
   });
+
+  it("persiste os parâmetros financeiros personalizados revisados na importação", async () => {
+    const resposta = await POST(requisicao({
+      valor_base: "120",
+      horas_incluidas: "2",
+      valor_hora_adicional: "50",
+    }));
+
+    expect(resposta.status).toBe(200);
+    expect(dependencias.importar).toHaveBeenCalledWith(expect.objectContaining({
+      valor_base: "120",
+      horas_incluidas: "2",
+      valor_hora_adicional: "50",
+    }), "fixture.eml");
+  });
 });

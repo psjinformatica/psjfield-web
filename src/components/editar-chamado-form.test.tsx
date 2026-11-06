@@ -47,7 +47,7 @@ describe("EditarChamadoForm", () => {
     expect(html).toMatch(/id="campo-horas_incluidas"[^>]*disabled/);
   });
 
-  it.each(["Concluído", "Improdutivo"])(
+  it.each(["Concluído", "Improdutivo", "Cancelado"])(
     "deixa parâmetros financeiros somente leitura quando o atendimento está %s sem recebível",
     (status) => {
       const html = renderToStaticMarkup(<EditarChamadoForm contexto={contexto({

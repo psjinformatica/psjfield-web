@@ -1,5 +1,10 @@
 import { calcularFinanceiro } from "@/lib/financeiro-calculo";
 import { REGRA_PRECO_ATUAL, type CalculoFinanceiro } from "@/lib/financeiro-types";
+import {
+  resolverParametrosFinanceiros,
+  type ParametrosFinanceirosEfetivos,
+  type ParametrosFinanceirosEntrada,
+} from "@/lib/financeiro-parametros";
 import { normalizarClienteRat, resolverModeloRat } from "@/lib/rat-models";
 
 export type ClienteFinanceiro = "claro" | "dasa";
@@ -12,6 +17,7 @@ export type PoliticaFinanceira = {
 
 export type RecebivelAutomatico = {
   calculo: CalculoFinanceiro | null;
+  parametros: ParametrosFinanceirosEfetivos;
   previsao_recebimento: string;
   prazo_dias: number;
 };
@@ -98,10 +104,11 @@ export function calcularValorAtendimento(
   cliente: string | null | undefined,
   horaInicio: string,
   horaFim: string,
+  parametros: ParametrosFinanceirosEntrada = {},
 ): CalculoFinanceiro | null {
   const politica = resolverPoliticaFinanceira(cliente);
   if (politica?.regra_valor !== REGRA_PRECO_ATUAL) return null;
-  return calcularFinanceiro(horaInicio, horaFim);
+  return calcularFinanceiro(horaInicio, horaFim, parametros);
 }
 
 export function calcularPrazoAtePrevisao(dataEncerramento: string | Date, previsao: string): number | null {
@@ -118,6 +125,7 @@ export function prepararRecebivelAutomatico(
   dataEncerramento: string | Date,
   horaInicio: string,
   horaFim: string,
+  parametrosEntrada: ParametrosFinanceirosEntrada = {},
 ): RecebivelAutomatico | null {
   const previsao = calcularPrevisaoRecebimento(cliente, dataEncerramento);
   const politica = resolverPoliticaFinanceira(cliente);
@@ -125,6 +133,7 @@ export function prepararRecebivelAutomatico(
   if (!previsao || politica?.regra_valor !== REGRA_PRECO_ATUAL || prazoDias === null) {
     return null;
   }
-  const calculo = calcularFinanceiro(horaInicio, horaFim);
-  return { calculo, previsao_recebimento: previsao, prazo_dias: prazoDias };
+  const parametros = resolverParametrosFinanceiros(parametrosEntrada);
+  const calculo = calcularFinanceiro(horaInicio, horaFim, parametros);
+  return { calculo, parametros, previsao_recebimento: previsao, prazo_dias: prazoDias };
 }

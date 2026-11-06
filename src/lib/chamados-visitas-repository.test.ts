@@ -17,6 +17,7 @@ describe("persistência de visitas", () => {
     expect(insercao).not.toContain("hora_inicio");
     expect(insercao).not.toContain("descricao_servico,");
     expect(insercao).toContain("WHERE id = ${raizId}");
+    expect(insercao).toContain("valor_base, horas_incluidas, valor_hora_adicional");
   });
 
   it("lista a raiz e todas as derivadas em ordem, sem misturar RATs", async () => {

@@ -25,7 +25,10 @@ function transacaoCapturada() {
   return { consultas, transacao: transacao as never };
 }
 
-function bancoReparo(opcoes: { existente?: boolean } = {}) {
+function bancoReparo(opcoes: {
+  existente?: boolean;
+  parametros?: { valor_base: string; horas_incluidas: string; valor_hora_adicional: string };
+} = {}) {
   const consultas: ConsultaCapturada[] = [];
   const transacao = (strings: TemplateStringsArray, ...valores: unknown[]) => {
     const sql = strings.join("?");
@@ -38,6 +41,9 @@ function bancoReparo(opcoes: { existente?: boolean } = {}) {
         status: "Improdutivo",
         hora_inicio: "15:00",
         hora_termino: "15:10",
+        valor_base: opcoes.parametros?.valor_base ?? null,
+        horas_incluidas: opcoes.parametros?.horas_incluidas ?? null,
+        valor_hora_adicional: opcoes.parametros?.valor_hora_adicional ?? null,
         atualizado_em: new Date("2026-09-28T18:10:00.000Z"),
       }]);
     }
@@ -96,6 +102,46 @@ describe("registrarContaAutomatica", () => {
     expect(captura.consultas[0].valores).toEqual([
       25, "SR-REVISAO", "2026-09-15T18:00:00.000Z", "", "12:20",
       null, null, 100, 30, null, null, "BASE_100_3H_ADICIONAL_30_V1", 30,
+      "EM_REVISAO", true,
+    ]);
+  });
+
+  it("persiste no recebível os parâmetros personalizados do chamado", async () => {
+    const captura = transacaoCapturada();
+    await registrarContaAutomatica(captura.transacao, {
+      id: 28,
+      numero_chamado: "SR-SAO-JOSE",
+      cliente: "DASA",
+      hora_inicio: "09:00",
+      hora_termino: "12:20",
+      valor_base: "120",
+      horas_incluidas: "2",
+      valor_hora_adicional: "50",
+    }, "2026-11-06T15:20:00.000Z");
+
+    expect(captura.consultas[0].valores).toEqual([
+      28, "SR-SAO-JOSE", "2026-11-06T15:20:00.000Z", "09:00", "12:20",
+      200, 2, 120, 50, 100, 220, "PARAMETROS_CHAMADO_V1", 39,
+      "A_RECEBER", false,
+    ]);
+  });
+
+  it("preserva parâmetros personalizados quando horários incompletos exigem revisão", async () => {
+    const captura = transacaoCapturada();
+    await registrarContaAutomatica(captura.transacao, {
+      id: 29,
+      numero_chamado: "SR-SAO-JOSE-REVISAO",
+      cliente: "DASA",
+      hora_inicio: "",
+      hora_termino: "12:20",
+      valor_base: "120",
+      horas_incluidas: "2",
+      valor_hora_adicional: "50",
+    }, "2026-11-06T15:20:00.000Z");
+
+    expect(captura.consultas[0].valores).toEqual([
+      29, "SR-SAO-JOSE-REVISAO", "2026-11-06T15:20:00.000Z", "", "12:20",
+      null, null, 120, 50, null, null, "PARAMETROS_CHAMADO_V1", 39,
       "EM_REVISAO", true,
     ]);
   });
@@ -189,6 +235,22 @@ describe("repararContaAutomaticaAusente", () => {
       chamado_id: 24,
     });
     expect(consultas.some((consulta) => consulta.sql.includes("INSERT INTO contas_receber"))).toBe(false);
+  });
+
+  it("repara recebível ausente usando os parâmetros específicos do chamado", async () => {
+    const consultas = bancoReparo({
+      parametros: { valor_base: "120", horas_incluidas: "2", valor_hora_adicional: "50" },
+    });
+
+    await expect(repararContaAutomaticaAusente(24)).resolves.toMatchObject({
+      criado: true,
+      valor_total: 120,
+      regra_preco: "PARAMETROS_CHAMADO_V1",
+    });
+    const insercao = consultas.find((consulta) => consulta.sql.includes("INSERT INTO contas_receber"));
+    expect(insercao?.valores).toEqual(expect.arrayContaining([
+      10, 0, 120, 50, 0, 120, "PARAMETROS_CHAMADO_V1",
+    ]));
   });
 
   it("trava e escreve somente a Visita 1, sem atualizar a Visita 2", async () => {

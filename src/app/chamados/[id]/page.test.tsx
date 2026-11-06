@@ -130,4 +130,41 @@ describe("detalhe do chamado", () => {
     expect(dependencias.marcarAcessado).toHaveBeenCalledOnce();
     expect(dependencias.marcarAcessado).toHaveBeenCalledWith(20);
   });
+
+  it("exibe os parâmetros padrão efetivos quando o chamado não possui personalização", async () => {
+    dependencias.buscarChamado.mockResolvedValue({
+      ...chamadoDasaSeguro,
+      valor_base: null,
+      horas_incluidas: null,
+      valor_hora_adicional: null,
+    });
+
+    const pagina = await DetalheChamado({ params: Promise.resolve({ id: "20" }) });
+    const html = renderToStaticMarkup(pagina);
+
+    expect(html).toContain("Valor-base");
+    expect(html).toContain("R$ 100,00");
+    expect(html).toContain("Horas incluídas");
+    expect(html).toContain("3 horas");
+    expect(html).toContain("Hora adicional");
+    expect(html).toContain("R$ 30,00");
+    expect(html).toContain("Política padrão");
+  });
+
+  it("exibe claramente a condição personalizada de São José", async () => {
+    dependencias.buscarChamado.mockResolvedValue({
+      ...chamadoDasaSeguro,
+      valor_base: "120.00",
+      horas_incluidas: "2.00",
+      valor_hora_adicional: "50.00",
+    });
+
+    const pagina = await DetalheChamado({ params: Promise.resolve({ id: "20" }) });
+    const html = renderToStaticMarkup(pagina);
+
+    expect(html).toContain("R$ 120,00");
+    expect(html).toContain("2 horas");
+    expect(html).toContain("R$ 50,00");
+    expect(html).toContain("Personalizada");
+  });
 });

@@ -196,7 +196,32 @@ describe("persistência da edição cadastral", () => {
     expect(banco.atualizacoesConfirmadas).toHaveLength(0);
   });
 
-  it.each(["Concluído", "Improdutivo"])(
+  it("mantém parâmetros financeiros próprios da visita mesmo no escopo de grupo", async () => {
+    const banco = bancoEdicao();
+    const contexto = await buscarContextoEdicaoChamado(25);
+    await expect(editarDadosChamado(25, {
+      dados: {
+        ...dadosEditaveisDoChamado(contexto!.chamado),
+        valor_base: "120",
+        horas_incluidas: "2",
+        valor_hora_adicional: "50",
+      },
+      escopo: "TODAS_VISITAS_RELACIONADAS",
+      versao_dados: contexto!.versao_dados,
+      versao_grupo: contexto!.versao_grupo,
+    })).resolves.toMatchObject({ alterados: 1 });
+
+    expect(banco.atualizacoesConfirmadas).toHaveLength(1);
+    expect(banco.atualizacoesConfirmadas[0]).toMatchObject({
+      id: 25,
+      fragmento: {
+        dados: { valor_base: "120", horas_incluidas: "2", valor_hora_adicional: "50" },
+      },
+    });
+    expect(banco.auditoriasConfirmadas).toEqual([25]);
+  });
+
+  it.each(["Concluído", "Improdutivo", "Cancelado"])(
     "não altera parâmetros financeiros quando o atendimento está %s, mesmo sem recebível",
     async (status) => {
       const banco = bancoEdicao({ status });

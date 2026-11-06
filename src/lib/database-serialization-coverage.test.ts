@@ -34,6 +34,10 @@ describe("cobertura da serialização central do banco", () => {
     const financeiro = await readFile(new URL("./financeiro-repository.ts", import.meta.url), "utf8");
     const finalizar = corpoFuncao(repository, "finalizarChamado");
     expect(finalizar).toContain("registrarContaAutomatica(transacao");
+    expect(finalizar).toContain("valor_base, horas_incluidas, valor_hora_adicional");
+    expect(finalizar).toContain("valor_base: atual.valor_base");
+    expect(finalizar).toContain("horas_incluidas: atual.horas_incluidas");
+    expect(finalizar).toContain("valor_hora_adicional: atual.valor_hora_adicional");
     expect(corpoFuncao(financeiro, "listarContasReceber")).toContain("observeDatabaseOperation(\"financeiro.listar\"");
     expect(corpoFuncao(financeiro, "marcarContaRecebida")).toContain("observeDatabaseOperation(\"financeiro.marcarRecebida\"");
   });

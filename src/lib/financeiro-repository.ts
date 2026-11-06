@@ -7,7 +7,8 @@ import { observeDatabaseOperation } from "@/lib/db-observability";
 import {
   prepararRecebivelAutomatico,
 } from "@/lib/financeiro-politicas";
-import { REGRA_PRECO_ATUAL, type ContaReceber } from "@/lib/financeiro-types";
+import type { ContaReceber, RegraPreco } from "@/lib/financeiro-types";
+import type { ParametrosFinanceirosEntrada } from "@/lib/financeiro-parametros";
 import { statusGeraRecebimento } from "@/lib/status";
 
 type Transacao = postgres.TransactionSql<Record<string, never>>;
@@ -19,12 +20,18 @@ export type ResultadoReparoRecebivel = {
   previsao_recebimento: string;
   duracao_minutos: number;
   valor_total: number;
-  regra_preco: typeof REGRA_PRECO_ATUAL;
+  regra_preco: RegraPreco;
 };
 
 export async function registrarContaAutomatica(
   transacao: Transacao,
-  chamado: { id: number; numero_chamado: string; cliente: string; hora_inicio: string; hora_termino: string },
+  chamado: {
+    id: number;
+    numero_chamado: string;
+    cliente: string;
+    hora_inicio: string;
+    hora_termino: string;
+  } & ParametrosFinanceirosEntrada,
   encerradoEm: string,
 ) {
   const recebivel = prepararRecebivelAutomatico(
@@ -32,9 +39,10 @@ export async function registrarContaAutomatica(
     encerradoEm,
     chamado.hora_inicio,
     chamado.hora_termino,
+    chamado,
   );
   if (!recebivel) return false;
-  const { calculo, prazo_dias: prazoDias } = recebivel;
+  const { calculo, parametros, prazo_dias: prazoDias } = recebivel;
   await transacao`
     INSERT INTO contas_receber (
       chamado_id, numero_chamado_snapshot, encerrado_em,
@@ -45,9 +53,10 @@ export async function registrarContaAutomatica(
       ${chamado.id}, ${chamado.numero_chamado}, ${encerradoEm},
       ${chamado.hora_inicio}, ${chamado.hora_termino},
       ${calculo?.duracao_minutos ?? null}, ${calculo?.horas_adicionais ?? null},
-      ${calculo?.valor_base ?? 100}, ${calculo?.valor_hora_adicional ?? 30},
+      ${calculo?.valor_base ?? parametros.valor_base},
+      ${calculo?.valor_hora_adicional ?? parametros.valor_hora_adicional},
       ${calculo?.valor_adicional ?? null}, ${calculo?.valor_total ?? null},
-      ${REGRA_PRECO_ATUAL}, 'AUTOMATICO', ${prazoDias},
+      ${parametros.regra_preco}, 'AUTOMATICO', ${prazoDias},
       ${calculo ? "A_RECEBER" : "EM_REVISAO"}, ${!calculo}
     )
     ON CONFLICT (chamado_id) DO UPDATE SET
@@ -83,9 +92,13 @@ export async function repararContaAutomaticaAusente(
         status: string;
         hora_inicio: string;
         hora_termino: string;
+        valor_base: string | null;
+        horas_incluidas: string | null;
+        valor_hora_adicional: string | null;
         atualizado_em: Date | string;
       }[]>`
-        SELECT id, numero_chamado, cliente, status, hora_inicio, hora_termino, atualizado_em
+        SELECT id, numero_chamado, cliente, status, hora_inicio, hora_termino,
+               valor_base, horas_incluidas, valor_hora_adicional, atualizado_em
         FROM chamados
         WHERE id = ${chamadoId}
         FOR UPDATE
@@ -107,6 +120,7 @@ export async function repararContaAutomaticaAusente(
         encerradoEm,
         chamado.hora_inicio,
         chamado.hora_termino,
+        chamado,
       );
       if (!preparado?.calculo) {
         throw new Error(`Não foi possível reconstruir integralmente o recebível do chamado ${chamadoId}.`);

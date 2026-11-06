@@ -20,6 +20,7 @@ import {
 import { getSql } from "@/lib/db";
 import { observeDatabaseOperation } from "@/lib/db-observability";
 import { obterChamadoRaizId } from "@/lib/chamados-visitas";
+import { statusEncerraAtendimento } from "@/lib/status";
 import type { Chamado } from "@/lib/types";
 
 type ChamadoEdicaoLinha = Chamado & { possui_recebivel?: boolean };
@@ -165,7 +166,7 @@ export async function editarDadosChamado(id: number, entrada: SolicitacaoEdicaoC
         campo as typeof CAMPOS_FINANCEIROS_CHAMADO[number],
       ));
       if (mudouFinanceiro) {
-        if (atual.status === "Concluído" || atual.status === "Improdutivo") {
+        if (statusEncerraAtendimento(atual.status)) {
           throw new Error("Os parâmetros financeiros não podem ser alterados porque o atendimento já foi encerrado.");
         }
         const recebiveis = await transacao<{ existe: boolean }[]>`
