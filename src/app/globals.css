@@ -275,6 +275,8 @@ select:focus, input:focus, textarea:focus { border-color: var(--brand-2); box-sh
   .receive-form { align-items: start; column-gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); padding-top: 6px; row-gap: 4px; }
   .financial-correction form { grid-template-columns: 1fr; }
   .financial-correction-reason, .financial-correction-actions { grid-column: 1; }
+  .finance-card .financial-correction-preview dl { grid-template-columns: 1fr; }
+  .finance-card .financial-correction-preview dl div dd { white-space: normal; }
   .receive-form > label { display: grid; grid-template-rows: auto 42px; line-height: 1.05; min-width: 0; row-gap: 3px; }
   .receive-form input { box-sizing: border-box; height: 42px; margin: 0; padding: 5px 6px; }
   .receive-form input[type="date"] { -webkit-min-logical-width: 0; display: block; line-height: normal; max-width: 100%; min-height: 42px; width: 100%; }
