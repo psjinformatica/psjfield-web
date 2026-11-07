@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { FinanceiroService, type FinanceiroGateway } from "@/lib/financeiro-service";
 
@@ -13,6 +13,8 @@ describe("FinanceiroService", () => {
         recebido = { id, valor, data };
       },
       reverterRecebimento: async () => undefined,
+      prepararCorrecao: async () => undefined as never,
+      aplicarCorrecao: async () => undefined as never,
     };
     const service = new FinanceiroService(gateway);
     await service.marcarRecebida("8e84b693-e79d-41b5-9e27-ce087109bd18", {
@@ -32,6 +34,8 @@ describe("FinanceiroService", () => {
       listar: async () => [],
       marcarRecebida: async () => undefined,
       reverterRecebimento: async () => undefined,
+      prepararCorrecao: async () => undefined as never,
+      aplicarCorrecao: async () => undefined as never,
     });
     await expect(service.marcarRecebida("inválido", {})).rejects.toThrow("Conta inválida");
     await expect(service.marcarRecebida("8e84b693-e79d-41b5-9e27-ce087109bd18", {
@@ -69,6 +73,8 @@ describe("FinanceiroService", () => {
         conta.recebido_em = null;
         conta.valor_recebido = null;
       },
+      prepararCorrecao: async () => undefined as never,
+      aplicarCorrecao: async () => undefined as never,
     };
     const service = new FinanceiroService(gateway);
 
@@ -94,7 +100,25 @@ describe("FinanceiroService", () => {
       listar: async () => [],
       marcarRecebida: async () => undefined,
       reverterRecebimento: async () => undefined,
+      prepararCorrecao: async () => undefined as never,
+      aplicarCorrecao: async () => undefined as never,
     };
     await expect(new FinanceiroService(gateway).reverterRecebimento("inválido")).rejects.toThrow("Conta inválida");
+  });
+
+  it("valida a prévia e exige motivo, confirmação e versão para aplicar", async () => {
+    const id = "8e84b693-e79d-41b5-9e27-ce087109bd18";
+    const prepararCorrecao = vi.fn().mockResolvedValue({ versao: "a".repeat(64) });
+    const aplicarCorrecao = vi.fn().mockResolvedValue({ versao: "a".repeat(64) });
+    const service = new FinanceiroService({
+      listar: async () => [], marcarRecebida: async () => undefined,
+      reverterRecebimento: async () => undefined, prepararCorrecao, aplicarCorrecao,
+    });
+    const parametros = { valor_base: "130", horas_incluidas: "3", valor_hora_adicional: "30" };
+    await service.prepararCorrecao(id, { parametros });
+    expect(prepararCorrecao).toHaveBeenCalledWith(id, { valor_base: 130, horas_incluidas: 3, valor_hora_adicional: 30 });
+    await expect(service.aplicarCorrecao(id, { parametros, motivo: "Ajuste", confirmado: false, versao: "a".repeat(64) })).rejects.toThrow();
+    await service.aplicarCorrecao(id, { parametros, motivo: "Ajuste comercial", confirmado: true, versao: "a".repeat(64) });
+    expect(aplicarCorrecao).toHaveBeenCalledWith(id, { valor_base: 130, horas_incluidas: 3, valor_hora_adicional: 30 }, "Ajuste comercial", "a".repeat(64));
   });
 });

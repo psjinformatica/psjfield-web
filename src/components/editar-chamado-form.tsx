@@ -8,6 +8,7 @@ import { useMemo, useState, type ChangeEvent, type FormEvent } from "react";
 import {
   CAMPOS_COMPARTILHAVEIS_VISITAS,
   CAMPOS_FINANCEIROS_CHAMADO,
+  ROTULOS_CAMPOS_AUDITORIA_CHAMADO,
   ROTULOS_CAMPOS_EDICAO_CHAMADO,
   camposAlterados,
   dadosEditaveisDoChamado,
@@ -200,9 +201,9 @@ export function EditarChamadoForm({ contexto }: { contexto: ContextoEdicaoChamad
     <section className="edit-history">
       <h2>Histórico de alterações</h2>
       {contexto.alteracoes.length === 0 ? <p>Nenhuma edição cadastral registrada.</p> : contexto.alteracoes.map((alteracao) => <details key={alteracao.id}>
-        <summary>{formatarDataHora(alteracao.alterado_em)} — {alteracao.campos_alterados.map((campo) => ROTULOS_CAMPOS_EDICAO_CHAMADO[campo]).join(", ")}</summary>
+        <summary>{formatarDataHora(alteracao.alterado_em)} — {alteracao.campos_alterados.map((campo) => ROTULOS_CAMPOS_AUDITORIA_CHAMADO[campo]).join(", ")}</summary>
         <dl>{alteracao.campos_alterados.map((campo) => <div key={campo}>
-          <dt>{ROTULOS_CAMPOS_EDICAO_CHAMADO[campo]}</dt>
+          <dt>{ROTULOS_CAMPOS_AUDITORIA_CHAMADO[campo]}</dt>
           <dd>De: {String(alteracao.valores_anteriores[campo] ?? "—")}<br />Para: {String(alteracao.valores_novos[campo] ?? "—")}</dd>
         </div>)}</dl>
       </details>)}

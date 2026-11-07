@@ -12,6 +12,13 @@ export const CAMPOS_EDICAO_CHAMADO = [
 ] as const;
 
 export type CampoEdicaoChamado = typeof CAMPOS_EDICAO_CHAMADO[number];
+export const CAMPOS_AUDITORIA_FINANCEIRA = [
+  "recebivel_valor_base", "recebivel_valor_hora_adicional", "recebivel_horas_adicionais",
+  "recebivel_valor_adicional", "recebivel_valor_total", "recebivel_regra_preco",
+  "motivo_correcao",
+] as const;
+export type CampoAuditoriaFinanceira = typeof CAMPOS_AUDITORIA_FINANCEIRA[number];
+export type CampoAuditoriaChamado = CampoEdicaoChamado | CampoAuditoriaFinanceira;
 export type DadosEdicaoChamado = Pick<Chamado, CampoEdicaoChamado>;
 export type EscopoEdicaoChamado = "SOMENTE_ESTA_VISITA" | "TODAS_VISITAS_RELACIONADAS";
 
@@ -49,6 +56,17 @@ export const ROTULOS_CAMPOS_EDICAO_CHAMADO: Record<CampoEdicaoChamado, string> =
   valor_base: "Valor-base",
   horas_incluidas: "Horas incluídas",
   valor_hora_adicional: "Valor da hora adicional",
+};
+
+export const ROTULOS_CAMPOS_AUDITORIA_CHAMADO: Record<CampoAuditoriaChamado, string> = {
+  ...ROTULOS_CAMPOS_EDICAO_CHAMADO,
+  recebivel_valor_base: "Valor-base do recebível",
+  recebivel_valor_hora_adicional: "Hora adicional do recebível",
+  recebivel_horas_adicionais: "Horas adicionais cobradas",
+  recebivel_valor_adicional: "Valor adicional do recebível",
+  recebivel_valor_total: "Valor total do recebível",
+  recebivel_regra_preco: "Regra de preço do recebível",
+  motivo_correcao: "Motivo da correção financeira",
 };
 
 const texto = (maximo = 2_000) => z.string().trim().max(maximo);
@@ -120,9 +138,9 @@ export type AlteracaoChamado = {
   alterado_em: string;
   origem: "EDICAO_MANUAL";
   escopo: EscopoEdicaoChamado;
-  campos_alterados: CampoEdicaoChamado[];
-  valores_anteriores: Partial<DadosEdicaoChamado>;
-  valores_novos: Partial<DadosEdicaoChamado>;
+  campos_alterados: CampoAuditoriaChamado[];
+  valores_anteriores: Partial<Record<CampoAuditoriaChamado, string | number | null>>;
+  valores_novos: Partial<Record<CampoAuditoriaChamado, string | number | null>>;
 };
 
 export type ContextoEdicaoChamado = {

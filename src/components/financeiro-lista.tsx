@@ -7,6 +7,7 @@ import { CalendarDays } from "lucide-react";
 import { formatarData, formatarMoeda } from "@/lib/format";
 import type { ContaReceber } from "@/lib/financeiro-types";
 import { exibirIdentificacaoVisita, rotuloVisita } from "@/lib/chamados-visitas";
+import { CorrecaoFinanceiraForm, podeCorrigirParametrosFinanceiros } from "@/components/correcao-financeira-form";
 
 export function filtrarContasFinanceiro(contas: ContaReceber[], filtro: string) {
   return contas.filter((conta) => filtro === "TODOS" || conta.situacao === filtro);
@@ -79,6 +80,7 @@ export function FinanceiroLista({ contas }: { contas: ContaReceber[] }) {
   const [filtro, setFiltro] = useState("TODOS");
   const [pendente, setPendente] = useState<string>();
   const [confirmandoReversao, setConfirmandoReversao] = useState<string>();
+  const [corrigindo, setCorrigindo] = useState<string>();
   const [erro, setErro] = useState("");
   const filtradas = useMemo(
     () => filtrarContasFinanceiro(contas, filtro),
@@ -159,6 +161,16 @@ export function FinanceiroLista({ contas }: { contas: ContaReceber[] }) {
           onCancelar={() => setConfirmandoReversao(undefined)}
           onConfirmar={() => void reverter(conta)}
         />}
+        {podeCorrigirParametrosFinanceiros(conta) && corrigindo !== conta.id ? <button
+          className="secondary-button financial-correction-button"
+          disabled={pendente === conta.id}
+          onClick={() => setCorrigindo(conta.id)}
+          type="button"
+        >Corrigir parâmetros financeiros</button> : null}
+        {podeCorrigirParametrosFinanceiros(conta) && corrigindo === conta.id ? <CorrecaoFinanceiraForm
+          conta={conta}
+          onCancelar={() => setCorrigindo(undefined)}
+        /> : null}
       </article>;
       })}
     </div>

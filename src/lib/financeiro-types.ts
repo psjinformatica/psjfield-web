@@ -34,6 +34,7 @@ export type ContaReceber = {
   duracao_minutos: number | null;
   horas_adicionais: number | null;
   valor_base: string;
+  horas_incluidas: string;
   valor_hora_adicional: string;
   valor_adicional: string | null;
   valor_total: string | null;

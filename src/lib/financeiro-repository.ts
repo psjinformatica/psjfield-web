@@ -8,7 +8,7 @@ import {
   prepararRecebivelAutomatico,
 } from "@/lib/financeiro-politicas";
 import type { ContaReceber, RegraPreco } from "@/lib/financeiro-types";
-import type { ParametrosFinanceirosEntrada } from "@/lib/financeiro-parametros";
+import { resolverParametrosFinanceiros, type ParametrosFinanceirosEntrada } from "@/lib/financeiro-parametros";
 import { statusGeraRecebimento } from "@/lib/status";
 
 type Transacao = postgres.TransactionSql<Record<string, never>>;
@@ -183,13 +183,14 @@ export async function colocarContaEmRevisao(transacao: Transacao, chamadoId: num
 export async function listarContasReceber(): Promise<ContaReceber[]> {
   return observeDatabaseOperation("financeiro.listar", async () => {
     const sql = getSql();
-    const linhas = await sql<ContaReceber[]>`
+    const linhas = await sql<(Omit<ContaReceber, "horas_incluidas"> & { horas_incluidas_chamado: string | null })[]>`
     SELECT cr.id, cr.chamado_id, cr.numero_chamado_snapshot AS numero_chamado,
            c.visita_numero,
            (SELECT COUNT(*)::int FROM chamados visita
             WHERE visita.id = raiz.id OR visita.chamado_raiz_id = raiz.id) AS quantidade_visitas,
            cr.encerrado_em, cr.hora_inicio_snapshot, cr.hora_fim_snapshot,
            cr.duracao_minutos, cr.horas_adicionais, cr.valor_base,
+           c.horas_incluidas AS horas_incluidas_chamado,
            cr.valor_hora_adicional, cr.valor_adicional, cr.valor_total,
            cr.regra_preco, cr.origem, cr.prazo_dias,
            TO_CHAR(
@@ -214,11 +215,12 @@ export async function listarContasReceber(): Promise<ContaReceber[]> {
              cr.encerrado_em ASC NULLS LAST,
              cr.numero_chamado_snapshot ASC
   `;
-    return linhas.map((linha) => ({
+    return linhas.map(({ horas_incluidas_chamado, ...linha }) => ({
       ...linha,
       chamado_id: Number(linha.chamado_id),
       visita_numero: Number(linha.visita_numero),
       quantidade_visitas: Number(linha.quantidade_visitas),
+      horas_incluidas: String(resolverParametrosFinanceiros({ horas_incluidas: horas_incluidas_chamado }).horas_incluidas),
     }));
   });
 }

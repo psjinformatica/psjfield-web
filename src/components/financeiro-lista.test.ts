@@ -25,6 +25,7 @@ function conta(situacao: ContaReceber["situacao"], id = "conta-1"): ContaReceber
     duracao_minutos: 200,
     horas_adicionais: 1,
     valor_base: "100.00",
+    horas_incluidas: "3",
     valor_hora_adicional: "30.00",
     valor_adicional: "30.00",
     valor_total: "130.00",

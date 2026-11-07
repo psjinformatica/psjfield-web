@@ -8,6 +8,7 @@ function conta(situacao: ContaReceber["situacao"], total: string, recebido: stri
     id: crypto.randomUUID(), chamado_id: 1, numero_chamado: "MI-100", visita_numero: 1,
     quantidade_visitas: 1, encerrado_em: "2026-09-10T15:00:00.000Z", hora_inicio_snapshot: "09:00",
     hora_fim_snapshot: "12:20", duracao_minutos: 200, horas_adicionais: 1, valor_base: "100.00",
+    horas_incluidas: "3",
     valor_hora_adicional: "30.00", valor_adicional: "30.00", valor_total: total,
     regra_preco: "BASE_100_3H_ADICIONAL_30_V1", origem: "AUTOMATICO", prazo_dias: 35,
     previsao_recebimento: "2026-10-15", situacao, rotulo_situacao: "", revisao_pendente: false,
